@@ -1,0 +1,71 @@
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 25%;
+  background-color: #111b21;
+  border-right: 1px solid #202c33;
+  padding: 1rem;
+}
+
+/* CHAT AREA */
+.chat {
+  width: 75%;
+  display: flex;
+  flex-direction: column;
+  background-color: #0b141a;
+  position: relative;
+}
+
+.chat::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("../img/doodle.png");
+  background-size: contain;
+  opacity: 0.2;
+  z-index: 0;
+}
+
+.chat > * {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* HEADER */
+.chat-header {
+  padding: 1rem;
+  background-color: #202c33;
+  font-weight: bold;
+}
+
+/* MESSAGES */
+.messages {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+/* INPUT */
+.chat-input {
+  padding: 1rem;
+  background-color: #202c33;
+  display: flex;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border-radius: 20px;
+  border: none;
+  outline: none;
+  background-color: #2a3942;
+  color: white;
+}
