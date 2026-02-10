@@ -1,24 +1,51 @@
 .app {
   display: flex;
   height: 100vh;
+  position: relative;
+  overflow: hidden;
 }
+
 
 /* SIDEBAR */
 .sidebar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
   width: 25%;
+  min-width: 260px;
+
   background-color: #111b21;
   border-right: 1px solid #202c33;
-  padding: 1rem;
+  padding: 2rem;
+
+  transition: transform 0.3s ease;
+  z-index: 10;
 }
+
+
 
 /* CHAT AREA */
 .chat {
-  width: 75%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   background-color: #0b141a;
   position: relative;
 }
+
+
+/* Sidebar collapsed */
+.app.sidebar-hidden .sidebar {
+  transform: translateX(-100%);
+}
+
+
+/* Chat expands */
+.app.sidebar-hidden .chat {
+  width: 100%;
+}
+
 
 .chat::before {
   content: "";
@@ -44,6 +71,11 @@
   padding: 1rem;
   background-color: #202c33;
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  z-index: 11;
 }
 
 /* MESSAGES */
@@ -68,4 +100,12 @@
   outline: none;
   background-color: #2a3942;
   color: white;
+}
+.menu-btn {
+  background: none;
+  border: none;
+  color: #e9edef;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0;
 }

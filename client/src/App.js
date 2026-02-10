@@ -1,6 +1,5 @@
 import { useState } from "react";
-import Sidebar from "./components/Sidebar";
-import ChatWindow from "./components/ChatWindow";
+import ChatPage from "./pages/ChatPage";
 import "./styles/app.css";
 
 function App() {
@@ -14,9 +13,7 @@ function App() {
     },
     ml: {
       name: "ML Team",
-      messages: [
-        { text: "Training hit 92% accuracy", own: false },
-      ],
+      messages: [{ text: "Training hit 92% accuracy", own: false }],
     },
     general: {
       name: "General",
@@ -27,18 +24,12 @@ function App() {
   const [activeRoom, setActiveRoom] = useState("audio");
 
   return (
-    <div className="app">
-      <Sidebar
-        rooms={rooms}
-        activeRoom={activeRoom}
-        setActiveRoom={setActiveRoom}
-      />
-      <ChatWindow
-        room={rooms[activeRoom]}
-        setRooms={setRooms}
-        roomId={activeRoom}
-      />
-    </div>
+    <ChatPage
+      rooms={rooms}
+      activeRoom={activeRoom}
+      setActiveRoom={setActiveRoom}
+      setRooms={setRooms}
+    />
   );
 }
 
