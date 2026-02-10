@@ -8,19 +8,32 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
   const sendMessage = () => {
     if (!input.trim()) return;
 
-    setRooms((prev) => ({
-      ...prev,
-      [roomId]: {
-        ...prev[roomId],
-        messages: [
-          ...prev[roomId].messages,
-          { text: input, own: true },
-        ],
-      },
-    }));
+    setRooms((prev) => {
+      const updated = { ...prev };
+
+      Object.keys(updated).forEach((id) => {
+        if (id === roomId) {
+          updated[id] = {
+            ...updated[id],
+            messages: [
+              ...updated[id].messages,
+              { text: input, own: true },
+            ],
+          };
+        } else {
+          updated[id] = {
+            ...updated[id],
+            unread: updated[id].unread + 1, // 👈 simulate incoming
+          };
+        }
+      });
+
+      return updated;
+    });
 
     setInput("");
   };
+
 
   // 🔥 auto-scroll
   useEffect(() => {
