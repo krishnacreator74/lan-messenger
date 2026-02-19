@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
 
 function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
+  const fileInputRef = useRef(null);
   const [input, setInput] = useState("");
   const bottomRef = useRef(null);
 
@@ -17,7 +18,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
             ...updated[id],
             messages: [
               ...updated[id].messages,
-              { text: input, own: true },
+              { type: "text", text: input, own: true, timestamp: Date.now() },
             ],
           };
         } else {
@@ -69,8 +70,52 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
       </div>
 
       <div className="chat-input">
+        <button
+          onClick={() => fileInputRef.current.click()}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "1.5rem",
+            marginRight: "10px",
+            color: "#8696a0"
+          }}
+        >
+          📎
+        </button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const audioUrl = URL.createObjectURL(file);
+            console.log("Audio URL:", audioUrl);
+            setRooms((prev) => ({
+              ...prev,
+              [roomId]: {
+                ...prev[roomId],
+                messages: [
+                  ...prev[roomId].messages,
+                  {
+                    type: "audio",
+                    audioUrl,
+                    own: true,
+                    timestamp: Date.now(),
+                  },
+                ],
+              },
+            }));
+            e.target.value = null;
+          }}
+          
+        />
+
         <input
           placeholder="Type a message…"
+          style={{ flex: 1, fontSize: "1.1rem", padding: "10px" }}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {

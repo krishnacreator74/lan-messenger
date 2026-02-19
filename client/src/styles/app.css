@@ -58,12 +58,19 @@
   background-size: contain;
   opacity: 0.2;
   z-index: 0;
+  pointer-events: none;   /* IMPORTANT */
+
 }
 
-.chat > * {
+.messages {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
+
 
 
 /* HEADER */
@@ -78,18 +85,14 @@
   z-index: 11;
 }
 
-/* MESSAGES */
-.messages {
-  flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
-}
+
 
 /* INPUT */
 .chat-input {
   padding: 1rem;
   background-color: #202c33;
   display: flex;
+  z-index: 1;
 }
 
 .chat-input input {

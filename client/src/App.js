@@ -8,14 +8,31 @@ function App() {
       name: "Audio Team",
       unread: 0,
       messages: [
-        { text: "Hey, did you review the WAV?", own: false },
-        { text: "Yes, issue at 1:23 👀", own: true },
+        {
+          type: "text",
+          text: "Hey, did you review the WAV?",
+          own: false,
+          timestamp: Date.now(),
+        },
+        {
+          type: "text",
+          text: "Yes, issue at 1:23 👀",
+          own: true,
+          timestamp: Date.now(),
+        },
       ],
     },
     ml: {
       name: "ML Team",
       unread: 2,
-      messages: [{ text: "Training hit 92% accuracy", own: false }],
+      messages: [
+        {
+          type: "text",
+          text: "Training hit 92% accuracy",
+          own: false,
+          timestamp: Date.now(),
+        },
+      ],
     },
     general: {
       name: "General",
@@ -23,6 +40,7 @@ function App() {
       messages: [],
     },
   });
+
 
 
   const [activeRoom, setActiveRoom] = useState("audio");
