@@ -41,6 +41,45 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [room.messages]);
 
+  const seekFunctions = useRef({});
+
+  const parseTextWithTimestamps = (text) => {
+    return text.split(/(\d+:\d+)/g).map((part, index) => {
+      const match = part.match(/^(\d+):(\d+)$/);
+
+      if (match) {
+        const minutes = parseInt(match[1], 10);
+        const seconds = parseInt(match[2], 10);
+        const totalSeconds = minutes * 60 + seconds;
+
+        return (
+          <span
+            key={index}
+            style={{
+              color: "#25d366",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+            onClick={() => {
+              const audioIndexes = Object.keys(seekFunctions.current);
+              if (!audioIndexes.length) return;
+
+              const lastAudioIndex = audioIndexes[audioIndexes.length - 1];
+              const seekFn = seekFunctions.current[lastAudioIndex];
+
+              if (seekFn) {
+                seekFn(totalSeconds);
+              }
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="chat">
       <div className="chat-header">
@@ -63,9 +102,26 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
         className="messages"
         style={{ display: "flex", flexDirection: "column" }}
       >
-        {room.messages.map((msg, i) => (
-          <MessageBubble key={i} {...msg} />
-        ))}
+        {room.messages.map((msg, i) => {
+          if (msg.type === "text") {
+            return (
+              <MessageBubble
+                key={i}
+                {...msg}
+                text={parseTextWithTimestamps(msg.text)}
+              />
+            );
+          }
+          return (
+            <MessageBubble
+              key={i}
+              {...msg}
+              onSeek={(fn) => {
+                seekFunctions.current[i] = fn;
+              }}
+            />
+          );
+        })}
         <div ref={bottomRef} />
       </div>
 

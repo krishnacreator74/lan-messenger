@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 
-function MessageBubble({ type, text, audioUrl, own }) {
+function MessageBubble({ type, text, audioUrl, own, onSeek }) {
   const waveformRef = useRef(null);
   const waveSurferInstance = useRef(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  const seekTo = (seconds) => {
+    if (waveSurferInstance.current) {
+      const duration = waveSurferInstance.current.getDuration();
+      waveSurferInstance.current.seekTo(seconds / duration);
+    }
+  };
 
   useEffect(() => {
     if (type === "audio" && audioUrl && waveformRef.current) {
@@ -21,7 +28,10 @@ function MessageBubble({ type, text, audioUrl, own }) {
         responsive: true,
       });
 
-      waveSurferInstance.current.load(audioUrl);
+      waveSurferInstance.current.load(audioUrl).catch((err) => {
+        if (err && err.name === 'AbortError') return;
+        console.error('WaveSurfer load error:', err);
+      });
 
       waveSurferInstance.current.on("ready", () => {
         setDuration(waveSurferInstance.current.getDuration());
@@ -38,16 +48,28 @@ function MessageBubble({ type, text, audioUrl, own }) {
       waveSurferInstance.current.on("finish", () => {
         setIsPlaying(false);
       });
+
+      if (onSeek) {
+        onSeek(seekTo);
+      }
     }
 
     return () => {
-      waveSurferInstance.current?.destroy();
+      if (waveSurferInstance.current) {
+        try {
+          waveSurferInstance.current.unAll();
+          waveSurferInstance.current.destroy();
+        } catch (err) {
+          console.warn("WaveSurfer destroy error:", err);
+        }
+        waveSurferInstance.current = null;
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, audioUrl]);
 
   const togglePlay = () => {
     if (!waveSurferInstance.current) return;
-
     waveSurferInstance.current.playPause();
     setIsPlaying(waveSurferInstance.current.isPlaying());
   };
