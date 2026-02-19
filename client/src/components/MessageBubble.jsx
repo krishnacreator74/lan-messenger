@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 
-function MessageBubble({ type, text, audioUrl, own, onSeek }) {
+function MessageBubble({ type, text, audioUrl, sender, currentUser, onSeek }) {
   const waveformRef = useRef(null);
   const waveSurferInstance = useRef(null);
-
+  const own = sender?.id === currentUser?.id;
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -91,6 +91,21 @@ function MessageBubble({ type, text, audioUrl, own, onSeek }) {
         alignSelf: own ? "flex-end" : "flex-start",
       }}
     >
+
+    {!own && (
+      <div
+        style={{
+          fontSize: "0.75rem",
+          fontWeight: "bold",
+          marginBottom: "4px",
+          opacity: 0.7,
+        }}
+      >
+        {own ? "You" : sender?.name}
+      </div>
+    )}
+
+
       {type === "text" && text}
 
       {type === "audio" && (

@@ -7,20 +7,21 @@ function App() {
     audio: {
       name: "Audio Team",
       unread: 0,
-      messages: [
-        {
-          type: "text",
-          text: "Hey, did you review the WAV?",
-          own: false,
-          timestamp: Date.now(),
-        },
-        {
-          type: "text",
-          text: "Yes, issue at 1:23 👀",
-          own: true,
-          timestamp: Date.now(),
-        },
-      ],
+messages: [
+  {
+    type: "text",
+    text: "Hey, did you review the WAV?",
+    sender: { id: "u2", name: "Arjun" },
+    timestamp: Date.now(),
+  },
+  {
+    type: "text",
+    text: "Yes, issue at 1:23 👀",
+    sender: { id: "u1", name: "You" },
+    timestamp: Date.now(),
+  },
+]
+
     },
     ml: {
       name: "ML Team",

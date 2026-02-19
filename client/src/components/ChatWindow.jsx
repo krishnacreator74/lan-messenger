@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
 
+const currentUser = {
+  id: "u1",
+  name: "You",
+};
+
+
 function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
   const fileInputRef = useRef(null);
   const [input, setInput] = useState("");
@@ -18,7 +24,16 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
             ...updated[id],
             messages: [
               ...updated[id].messages,
-              { type: "text", text: input, own: true, timestamp: Date.now() },
+              {
+  type: "text",
+  text: input,
+  sender: {
+    id: "u1",
+    name: "You",
+  },
+  timestamp: Date.now(),
+}
+
             ],
           };
         } else {
@@ -108,6 +123,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
               <MessageBubble
                 key={i}
                 {...msg}
+                currentUser={currentUser}
                 text={parseTextWithTimestamps(msg.text)}
               />
             );
@@ -116,6 +132,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
             <MessageBubble
               key={i}
               {...msg}
+              currentUser={currentUser}
               onSeek={(fn) => {
                 seekFunctions.current[i] = fn;
               }}
@@ -157,8 +174,12 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
                   ...prev[roomId].messages,
                   {
                     type: "audio",
-                    audioUrl,
-                    own: true,
+                    audioUrl, 
+                  sender: {
+                    id: "u1",
+                    name: "You",
+                  },
+                    
                     timestamp: Date.now(),
                   },
                 ],
