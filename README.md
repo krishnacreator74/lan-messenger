@@ -84,7 +84,7 @@ UI updates instantly.
 
 ▶️ Running the Project
 1️⃣ Clone the repository
-git clone https://github.com/your-username/lan-messenger.git
+git clone https://github.com/krishnacreator74/lan-messenger
 cd lan-messenger
 2️⃣ Install dependencies
 npm install
