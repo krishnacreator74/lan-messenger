@@ -1,50 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ChatPage from "./pages/ChatPage";
 import "./styles/app.css";
 
 function App() {
-  const [rooms, setRooms] = useState({
-    audio: {
-      name: "Audio Team",
-      unread: 0,
-messages: [
-  {
-    type: "text",
-    text: "Hey, did you review the WAV?",
-    sender: { id: "u2", name: "Arjun" },
-    timestamp: Date.now(),
-  },
-  {
-    type: "text",
-    text: "Yes, issue at 1:23 👀",
-    sender: { id: "u1", name: "You" },
-    timestamp: Date.now(),
-  },
-]
 
-    },
-    ml: {
-      name: "ML Team",
-      unread: 2,
-      messages: [
-        {
-          type: "text",
-          text: "Training hit 92% accuracy",
-          own: false,
-          timestamp: Date.now(),
-        },
-      ],
-    },
-    general: {
-      name: "General",
-      unread: 0,
-      messages: [],
-    },
-  });
+  const [rooms, setRooms] = useState({});
+  const [activeRoom, setActiveRoom] = useState(null);
 
+  useEffect(() => {
+    fetch("http://localhost:5000/rooms")
+      .then(res => res.json())
+      .then(data => {
+        // convert array into object structure frontend expects
+        const formattedRooms = {};
 
+        data.forEach(room => {
+          formattedRooms[room.id] = {
+            name: room.name,
+            unread: 0,
+            messages: [] // start empty for now
+          };
+        });
 
-  const [activeRoom, setActiveRoom] = useState("audio");
+        setRooms(formattedRooms);
+        setActiveRoom(data[0]?.id);
+      })
+      .catch(err => console.error("Error fetching rooms:", err));
+  }, []);
 
   return (
     <ChatPage

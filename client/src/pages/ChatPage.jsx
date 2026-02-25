@@ -27,12 +27,14 @@ function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms }) {
         onRoomSelect={handleRoomSelect}
       />
 
+      {activeRoom && rooms[activeRoom] &&(
       <ChatWindow
         room={rooms[activeRoom]}
         roomId={activeRoom}
         setRooms={setRooms}
         toggleSidebar={() => setShowSidebar((s) => !s)}
       />
+      )}
     </div>
   );
 }
