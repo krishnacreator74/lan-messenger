@@ -12,42 +12,44 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
   const [input, setInput] = useState("");
   const bottomRef = useRef(null);
 
-  const sendMessage = () => {
+    const sendMessage = () => {
     if (!input.trim()) return;
 
-    setRooms((prev) => {
-      const updated = { ...prev };
+    fetch("http://localhost:5000/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        roomId,
+        sender: currentUser.name,
+        text: input
+      })
+    })
+    .then(res => res.json())
+    .then(newMsg => {
 
-      Object.keys(updated).forEach((id) => {
-        if (id === roomId) {
-          updated[id] = {
-            ...updated[id],
-            messages: [
-              ...updated[id].messages,
-              {
-  type: "text",
-  text: input,
-  sender: {
-    id: "u1",
-    name: "You",
-  },
-  timestamp: Date.now(),
-}
+      const formatted = {
+        type: "text",
+        text: newMsg.text,
+        sender: {
+          id: "u1",
+          name: newMsg.sender
+        },
+        timestamp: newMsg.time
+      };
 
-            ],
-          };
-        } else {
-          updated[id] = {
-            ...updated[id],
-            unread: updated[id].unread + 1, // 👈 simulate incoming
-          };
+      setRooms(prev => ({
+        ...prev,
+        [roomId]: {
+          ...prev[roomId],
+          messages: [...prev[roomId].messages, formatted]
         }
-      });
+      }));
 
-      return updated;
-    });
-
-    setInput("");
+      setInput("");
+    })
+    .catch(err => console.error("Send message error:", err));
   };
 
 
@@ -57,6 +59,37 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
   }, [room.messages]);
 
   const seekFunctions = useRef({});
+
+    useEffect(() => {
+    if (!roomId) return;
+
+    fetch("http://localhost:5000/messages")
+      .then(res => res.json())
+      .then(data => {
+        const filtered = data.filter(msg => msg.roomId === roomId);
+
+        const formatted = filtered.map(msg => ({
+          type: msg.type || "text",
+          text: msg.text,
+          audioUrl: msg.audioUrl,
+          sender: {
+            id: msg.sender === "You" ? "u1" : "u2",
+            name: msg.sender,
+          },
+          timestamp: msg.time,
+        }));
+
+        setRooms(prev => ({
+          ...prev,
+          [roomId]: {
+            ...prev[roomId],
+            messages: formatted
+          }
+        }));
+      })
+      .catch(err => console.error("Fetch messages error:", err));
+
+  }, [roomId]);
 
   const parseTextWithTimestamps = (text) => {
     return text.split(/(\d+:\d+)/g).map((part, index) => {
@@ -161,31 +194,44 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
           ref={fileInputRef}
           style={{ display: "none" }}
           onChange={(e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+          const file = e.target.files[0];
+          if (!file) return;
 
-            const audioUrl = URL.createObjectURL(file);
-            console.log("Audio URL:", audioUrl);
-            setRooms((prev) => ({
+          const audioUrl = URL.createObjectURL(file);
+
+          fetch("http://localhost:5000/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              roomId,
+              sender: currentUser.name,
+              type: "audio",
+              audioUrl
+            })
+          })
+          .then(res => res.json())
+          .then(newMsg => {
+
+            const formatted = {
+              type: "audio",
+              audioUrl: newMsg.audioUrl,
+              sender: {
+                id: "u1",
+                name: newMsg.sender
+              },
+              timestamp: newMsg.time
+            };
+
+            setRooms(prev => ({
               ...prev,
               [roomId]: {
                 ...prev[roomId],
-                messages: [
-                  ...prev[roomId].messages,
-                  {
-                    type: "audio",
-                    audioUrl, 
-                  sender: {
-                    id: "u1",
-                    name: "You",
-                  },
-                    
-                    timestamp: Date.now(),
-                  },
-                ],
-              },
+                messages: [...prev[roomId].messages, formatted]
+              }
             }));
-            e.target.value = null;
+          });
           }}
           
         />

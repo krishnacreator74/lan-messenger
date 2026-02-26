@@ -1,23 +1,24 @@
-
 const express = require("express");
 const router = express.Router();
 
-const messages = []; // memory ಯಲ್ಲಿ store ಮಾಡ್ತೀವಿ
+const messages = require("../data/messages");
 
-// ಎಲ್ಲಾ messages list ಮಾಡೋದು
+// GET all messages
 router.get("/messages", (req, res) => {
   res.json(messages);
 });
 
-// ಹೊಸ message add ಮಾಡೋದು
+// POST new message
 router.post("/messages", (req, res) => {
-  const { roomId, sender, text } = req.body;
+  const { roomId, sender, text, type, audioUrl } = req.body;
 
   const newMsg = {
     id: "m" + Date.now(),
     roomId,
     sender,
-    text,
+    text: text || null,
+    type: type || "text",
+    audioUrl: audioUrl || null,
     time: Date.now(),
   };
 
