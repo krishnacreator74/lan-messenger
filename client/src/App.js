@@ -8,7 +8,7 @@ function App() {
   const [activeRoom, setActiveRoom] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:5000/rooms")
+    fetch(`${process.env.REACT_APP_API}/rooms`)
       .then(res => res.json())
       .then(data => {
         // convert array into object structure frontend expects

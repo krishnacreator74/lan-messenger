@@ -1,6 +1,24 @@
 const express = require("express");
 const router = express.Router();
 const Message = require("../models/Message");
+const multer = require("multer");
+const path = require("path");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
+
+router.post("/upload", upload.single("audio"), (req, res) => {
+  const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+  res.json({ url: fileUrl });
+});
 
 // GET messages by roomId
 router.get("/:roomId", async (req, res) => {

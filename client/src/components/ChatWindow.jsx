@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
+import { io } from "socket.io-client";
 
 const currentUser = {
   id: "u1",
@@ -8,77 +9,95 @@ const currentUser = {
 
 
 function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
+  const socketRef = useRef(null);
+
+useEffect(() => {
+  socketRef.current = io(process.env.REACT_APP_API);
+
+  return () => {
+    socketRef.current.disconnect();
+  };
+}, []);
   const fileInputRef = useRef(null);
   const [input, setInput] = useState("");
   const bottomRef = useRef(null);
 
-    const sendMessage = () => {
-    if (!input.trim()) return;
+const sendMessage = () => {
+  if (!input.trim() || !socketRef.current) return;
 
-    fetch("http://localhost:5000/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        roomId,
-        sender: currentUser.name,
-        text: input
-      })
-    })
-    .then(res => res.json())
-    .then(newMsg => {
-
-      const formatted = {
-        type: "text",
-        text: newMsg.text,
-        sender: {
-          id: "u1",
-          name: newMsg.sender
-        },
-        timestamp: newMsg.time
-      };
-
-      setRooms(prev => ({
-        ...prev,
-        [roomId]: {
-          ...prev[roomId],
-          messages: [...prev[roomId].messages, formatted]
-        }
-      }));
-
-      setInput("");
-    })
-    .catch(err => console.error("Send message error:", err));
+  const msg = {
+    roomId,
+    sender: currentUser.name,
+    text: input,
+    type: "text"
   };
+
+  socketRef.current.emit("send_message", msg);
+
+  setInput("");
+};
+useEffect(() => {
+  if (!roomId) return;
+
+  const socket = socketRef.current;
+  if (!socket) return;
+
+  socket.emit("join_room", roomId);
+}, [roomId]);
+
+useEffect(() => {
+  if (!socketRef.current) return;
+
+  socketRef.current.on("receive_message", (msg) => {
+    const formatted = {
+      type: msg.type || "text",
+      text: msg.text,
+      audioUrl: msg.audioUrl,
+      sender: {
+        id: msg.sender === currentUser.name ? "u1" : "u2",
+        name: msg.sender,
+      },
+      timestamp: msg.timestamp || Date.now(),
+    };
+
+    setRooms(prev => ({
+      ...prev,
+      [msg.roomId]: {
+        ...prev[msg.roomId],
+        messages: [...(prev[msg.roomId]?.messages || []), formatted]
+      }
+    }));
+  });
+
+  return () => {
+    socketRef.current.off("receive_message");
+  };
+}, []);
 
 
   // 🔥 auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [room.messages]);
+  }, [room?.messages]);
 
   const seekFunctions = useRef({});
 
-    useEffect(() => {
-    if (!roomId) return;
+  useEffect(() => {
+  if (!roomId) return;
 
-    fetch("http://localhost:5000/messages")
-      .then(res => res.json())
-      .then(data => {
-        const filtered = data.filter(msg => msg.roomId === roomId);
-
-        const formatted = filtered.map(msg => ({
-          type: msg.type || "text",
-          text: msg.text,
-          audioUrl: msg.audioUrl,
-          sender: {
-            id: msg.sender === "You" ? "u1" : "u2",
-            name: msg.sender,
-          },
-          timestamp: msg.time,
-        }));
-
+  fetch(`${process.env.REACT_APP_API}/messages/${roomId}`)
+    .then(res => res.json())
+    .then(data => {
+    const formatted = data.map(msg => ({
+      type: msg.type || "text",
+      text: msg.text,
+      audioUrl: msg.audioUrl,
+      sender: {
+        id: msg.sender === "You" ? "u1" : "u2",
+        name: msg.sender,
+      },
+      timestamp: msg.timestamp,
+    }));
         setRooms(prev => ({
           ...prev,
           [roomId]: {
@@ -193,45 +212,33 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
           type="file"
           ref={fileInputRef}
           style={{ display: "none" }}
-          onChange={(e) => {
-          const file = e.target.files[0];
-          if (!file) return;
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-          const audioUrl = URL.createObjectURL(file);
+            const formData = new FormData();
+            formData.append("audio", file);
 
-          fetch("http://localhost:5000/messages", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              roomId,
-              sender: currentUser.name,
-              type: "audio",
-              audioUrl
-            })
-          })
-          .then(res => res.json())
-          .then(newMsg => {
+            try {
+              // 🔥 upload to server
+              const res = await fetch(`${process.env.REACT_APP_API}/messages/upload`, {
+                method: "POST",
+                body: formData,
+              });
 
-            const formatted = {
-              type: "audio",
-              audioUrl: newMsg.audioUrl,
-              sender: {
-                id: "u1",
-                name: newMsg.sender
-              },
-              timestamp: newMsg.time
-            };
+              const data = await res.json();
 
-            setRooms(prev => ({
-              ...prev,
-              [roomId]: {
-                ...prev[roomId],
-                messages: [...prev[roomId].messages, formatted]
-              }
-            }));
-          });
+              // 🔥 send via socket
+              socketRef.current.emit("send_message", {
+                roomId,
+                sender: currentUser.name,
+                type: "audio",
+                audioUrl: data.url, // REAL URL now
+              });
+
+            } catch (err) {
+              console.error("Upload failed:", err);
+            }
           }}
           
         />
