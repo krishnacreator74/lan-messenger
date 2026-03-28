@@ -26,6 +26,8 @@ router.post("/upload", upload.single("audio"), (req, res) => {
     require("dotenv").config();
     const fileUrl = `${process.env.BASE_URL}/uploads/${req.file.filename}`;
 
+    console.log("BASE_URL:", process.env.BASE_URL);
+
     res.json({ url: fileUrl });
 
   } catch (err) {
@@ -55,6 +57,16 @@ router.post("/", async (req, res) => {
     res.json(savedMessage);
   } catch (error) {
     res.status(500).json({ error: "Failed to save message" });
+  }
+});
+
+router.delete("/reset", async (req, res) => {
+  try {
+    await Message.deleteMany({});
+    res.json({ message: "All messages deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to reset messages" });
   }
 });
 

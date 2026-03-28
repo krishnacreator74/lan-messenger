@@ -15,7 +15,7 @@ function App() {
         const formattedRooms = {};
 
         data.forEach(room => {
-          formattedRooms[room.id] = {
+          formattedRooms[room._id] = {
             name: room.name,
             unread: 0,
             messages: [] // start empty for now
@@ -23,7 +23,7 @@ function App() {
         });
 
         setRooms(formattedRooms);
-        setActiveRoom(data[0]?.id);
+        setActiveRoom(data[0]?._id);
       })
       .catch(err => console.error("Error fetching rooms:", err));
   }, []);
