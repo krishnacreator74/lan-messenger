@@ -60,13 +60,18 @@ useEffect(() => {
       timestamp: msg.timestamp || Date.now(),
     };
 
-    setRooms(prev => ({
-      ...prev,
-      [msg.roomId]: {
-        ...prev[msg.roomId],
-        messages: [...(prev[msg.roomId]?.messages || []), formatted]
-      }
-    }));
+setRooms(prev => {
+  if (!msg.roomId) return prev; // 🔥 prevent corruption
+
+  return {
+    ...prev,
+    [msg.roomId]: {
+      ...prev[msg.roomId],
+      messages: [...(prev[msg.roomId]?.messages || []), formatted]
+    }
+  };
+});
+
   });
 
   return () => {
