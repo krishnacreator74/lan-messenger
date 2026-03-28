@@ -16,8 +16,21 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 router.post("/upload", upload.single("audio"), (req, res) => {
-  const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
-  res.json({ url: fileUrl });
+  try {
+    console.log("FILE RECEIVED:", req.file); // 🔥 debug
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
+    res.json({ url: fileUrl });
+
+  } catch (err) {
+    console.error("UPLOAD ERROR:", err);
+    res.status(500).json({ error: "Upload failed" });
+  }
 });
 
 // GET messages by roomId
