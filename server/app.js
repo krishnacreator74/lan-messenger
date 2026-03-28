@@ -6,7 +6,14 @@ const messagesRoute = require("./src/routes/messages");
 
 const app = express();
 
-app.use(cors());
+app.get("/", (req, res) => {
+  res.send("🔥 Backend is alive");
+});
+
+app.use(cors({
+  origin: "*"
+}));
+
 app.use(express.json());
 
 console.log("roomsRoute =", typeof roomsRoute);

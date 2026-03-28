@@ -15,7 +15,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
     const sendMessage = () => {
     if (!input.trim()) return;
 
-    fetch("http://localhost:5000/messages", {
+    fetch("${process.env.REACT_APP_API}:5000/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -63,7 +63,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
     useEffect(() => {
     if (!roomId) return;
 
-    fetch("http://localhost:5000/messages")
+    fetch("${process.env.REACT_APP_API}:5000/messages")
       .then(res => res.json())
       .then(data => {
         const filtered = data.filter(msg => msg.roomId === roomId);
@@ -199,7 +199,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
 
           const audioUrl = URL.createObjectURL(file);
 
-          fetch("http://localhost:5000/messages", {
+          fetch("${process.env.REACT_APP_API}:5000/messages", {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
