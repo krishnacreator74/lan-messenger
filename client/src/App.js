@@ -1,56 +1,44 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import ChatPage from "./pages/ChatPage";
+import "./styles/app.css";
 
 function App() {
+  const [rooms, setRooms] = useState({});
+  const [activeRoom, setActiveRoom] = useState(null);
+
+  useEffect(() => {
+    fetch("http://localhost:5000/rooms")
+      .then(res => res.json())
+      .then(data => {
+        const formattedRooms = {};
+
+        data.forEach(room => {
+          formattedRooms[room._id || room.id] = {
+            name: room.name,
+            unread: 0,
+            messages: []
+          };
+        });
+
+        setRooms(formattedRooms);
+        setActiveRoom(data[0]?._id || data[0]?.id);
+      })
+      .catch(err => console.error("Error fetching rooms:", err));
+  }, []);
+
+  // 🔥 WAIT until data is ready
+  if (!activeRoom || !rooms[activeRoom]) {
+    return <div style={{ padding: "20px" }}>Loading...</div>;
+  }
+
+  // 🔥 MAIN APP
   return (
-    <div style={{ textAlign: "center", marginTop: "40px" }}>
-      
-      <h1>LAN Messenger Dashboard</h1>
-
-      {/* Add Customer Button */}
-      <button
-        style={{
-          backgroundColor: "green",
-          color: "white",
-          padding: "10px 20px",
-          borderRadius: "6px",
-          border: "none",
-          cursor: "pointer"
-        }}
-      >
-        Add Customer
-      </button>
-
-      {/* Customer Form */}
-      <form style={{ marginTop: "20px" }}>
-        <input
-          type="text"
-          placeholder="Customer Name"
-          style={{ padding: "8px", margin: "5px" }}
-        />
-        <br />
-
-        <input
-          type="email"
-          placeholder="Customer Email"
-          style={{ padding: "8px", margin: "5px" }}
-        />
-        <br />
-
-        <button
-          type="submit"
-          style={{
-            backgroundColor: "blue",
-            color: "white",
-            padding: "8px 16px",
-            border: "none",
-            borderRadius: "5px"
-          }}
-        >
-          Submit
-        </button>
-      </form>
-
-    </div>
+    <ChatPage
+      rooms={rooms}
+      activeRoom={activeRoom}
+      setActiveRoom={setActiveRoom}
+      setRooms={setRooms}
+    />
   );
 }
 

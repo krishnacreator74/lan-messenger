@@ -1,30 +1,73 @@
 const express = require("express");
 const router = express.Router();
+const Message = require("../models/Message");
+const multer = require("multer");
+const path = require("path");
 
-const messages = require("../data/messages");
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
 
-// GET all messages
-router.get("/messages", (req, res) => {
-  res.json(messages);
+const upload = multer({ storage });
+
+router.post("/upload", upload.single("audio"), (req, res) => {
+  try {
+    console.log("FILE RECEIVED:", req.file); // 🔥 debug
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    require("dotenv").config();
+    const fileUrl = `${process.env.BASE_URL}/uploads/${req.file.filename}`;
+
+    console.log("BASE_URL:", process.env.BASE_URL);
+
+    res.json({ url: fileUrl });
+
+  } catch (err) {
+    console.error("UPLOAD ERROR:", err);
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+// GET messages by roomId
+router.get("/:roomId", async (req, res) => {
+  try {
+    const messages = await Message.find({
+      roomId: req.params.roomId,
+    }).sort({ timestamp: 1 });
+
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch messages" });
+  }
 });
 
 // POST new message
-router.post("/messages", (req, res) => {
-  const { roomId, sender, text, type, audioUrl } = req.body;
+router.post("/", async (req, res) => {
+  try {
+    const newMessage = new Message(req.body);
+    const savedMessage = await newMessage.save();
+    res.json(savedMessage);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to save message" });
+  }
+});
 
-  const newMsg = {
-    id: "m" + Date.now(),
-    roomId,
-    sender,
-    text: text || null,
-    type: type || "text",
-    audioUrl: audioUrl || null,
-    time: Date.now(),
-  };
-
-  messages.push(newMsg);
-
-  res.status(201).json(newMsg);
+router.delete("/reset", async (req, res) => {
+  try {
+    await Message.deleteMany({});
+    res.json({ message: "All messages deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to reset messages" });
+  }
 });
 
 module.exports = router;

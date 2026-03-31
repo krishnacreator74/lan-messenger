@@ -1,74 +1,79 @@
 import { useState, useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
+import { io } from "socket.io-client";
 
 const currentUser = {
   id: "u1",
   name: "You",
 };
 
-
 function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
+  const socketRef = useRef(null);
   const fileInputRef = useRef(null);
   const [input, setInput] = useState("");
   const bottomRef = useRef(null);
-
-    const sendMessage = () => {
-    if (!input.trim()) return;
-
-    fetch("${process.env.REACT_APP_API}:5000/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        roomId,
-        sender: currentUser.name,
-        text: input
-      })
-    })
-    .then(res => res.json())
-    .then(newMsg => {
-
-      const formatted = {
-        type: "text",
-        text: newMsg.text,
-        sender: {
-          id: "u1",
-          name: newMsg.sender
-        },
-        timestamp: newMsg.time
-      };
-
-      setRooms(prev => ({
-        ...prev,
-        [roomId]: {
-          ...prev[roomId],
-          messages: [...prev[roomId].messages, formatted]
-        }
-      }));
-
-      setInput("");
-    })
-    .catch(err => console.error("Send message error:", err));
-  };
-
-
-  // 🔥 auto-scroll
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [room.messages]);
-
   const seekFunctions = useRef({});
 
-    useEffect(() => {
+  // 🔥 connect socket
+  useEffect(() => {
+    socketRef.current = io(process.env.REACT_APP_API);
+
+    return () => {
+      socketRef.current.disconnect();
+    };
+  }, []);
+
+  // 🔥 join room
+  useEffect(() => {
+    if (!roomId || !socketRef.current) return;
+    socketRef.current.emit("join_room", roomId);
+  }, [roomId]);
+
+  // 🔥 receive messages
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    socketRef.current.on("receive_message", (msg) => {
+      const formatted = {
+        type: msg.type || "text",
+        text: msg.text,
+        audioUrl: msg.audioUrl,
+        sender: {
+          id: msg.sender === currentUser.name ? "u1" : "u2",
+          name: msg.sender,
+        },
+        timestamp: msg.timestamp || Date.now(),
+      };
+
+      setRooms((prev) => {
+        if (!msg.roomId) return prev;
+
+        return {
+          ...prev,
+          [msg.roomId]: {
+            ...prev[msg.roomId],
+            messages: [
+              ...(prev[msg.roomId]?.messages || []),
+              formatted,
+            ],
+          },
+        };
+      });
+    });
+
+    return () => {
+      socketRef.current.off("receive_message");
+    };
+  }, []);
+
+  // 🔥 fetch old messages
+  useEffect(() => {
     if (!roomId) return;
 
-    fetch("${process.env.REACT_APP_API}:5000/messages")
-      .then(res => res.json())
-      .then(data => {
-        const filtered = data.filter(msg => msg.roomId === roomId);
-
-        const formatted = filtered.map(msg => ({
+    fetch(`${process.env.REACT_APP_API}/messages/${roomId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const formatted = data.map((msg) => ({
           type: msg.type || "text",
           text: msg.text,
           audioUrl: msg.audioUrl,
@@ -76,21 +81,41 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
             id: msg.sender === "You" ? "u1" : "u2",
             name: msg.sender,
           },
-          timestamp: msg.time,
+          timestamp: msg.timestamp,
         }));
 
-        setRooms(prev => ({
+        setRooms((prev) => ({
           ...prev,
           [roomId]: {
             ...prev[roomId],
-            messages: formatted
-          }
+            messages: formatted,
+          },
         }));
       })
-      .catch(err => console.error("Fetch messages error:", err));
-
+      .catch((err) => console.error("Fetch messages error:", err));
   }, [roomId]);
 
+  // 🔥 auto scroll
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [room?.messages]);
+
+  // 🔥 send message
+  const sendMessage = () => {
+    if (!input.trim() || !socketRef.current) return;
+
+    const msg = {
+      roomId,
+      sender: currentUser.name,
+      text: input,
+      type: "text",
+    };
+
+    socketRef.current.emit("send_message", msg);
+    setInput("");
+  };
+
+  // 🔥 timestamp parser (for audio seeking)
   const parseTextWithTimestamps = (text) => {
     return text.split(/(\d+:\d+)/g).map((part, index) => {
       const match = part.match(/^(\d+):(\d+)$/);
@@ -112,12 +137,11 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
               const audioIndexes = Object.keys(seekFunctions.current);
               if (!audioIndexes.length) return;
 
-              const lastAudioIndex = audioIndexes[audioIndexes.length - 1];
+              const lastAudioIndex =
+                audioIndexes[audioIndexes.length - 1];
               const seekFn = seekFunctions.current[lastAudioIndex];
 
-              if (seekFn) {
-                seekFn(totalSeconds);
-              }
+              if (seekFn) seekFn(totalSeconds);
             }}
           >
             {part}
@@ -144,13 +168,14 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
         >
           ☰
         </button>
-        {room.name}
-        </div>
+        {room?.name}
+      </div>
+
       <div
         className="messages"
         style={{ display: "flex", flexDirection: "column" }}
       >
-        {room.messages.map((msg, i) => {
+        {room?.messages?.map((msg, i) => {
           if (msg.type === "text") {
             return (
               <MessageBubble
@@ -161,6 +186,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
               />
             );
           }
+
           return (
             <MessageBubble
               key={i}
@@ -184,56 +210,44 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
             cursor: "pointer",
             fontSize: "1.5rem",
             marginRight: "10px",
-            color: "#8696a0"
+            color: "#8696a0",
           }}
         >
           📎
         </button>
+
         <input
           type="file"
           ref={fileInputRef}
           style={{ display: "none" }}
-          onChange={(e) => {
-          const file = e.target.files[0];
-          if (!file) return;
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-          const audioUrl = URL.createObjectURL(file);
+            const formData = new FormData();
+            formData.append("audio", file);
 
-          fetch("${process.env.REACT_APP_API}:5000/messages", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              roomId,
-              sender: currentUser.name,
-              type: "audio",
-              audioUrl
-            })
-          })
-          .then(res => res.json())
-          .then(newMsg => {
+            try {
+              const res = await fetch(
+                `${process.env.REACT_APP_API}/messages/upload`,
+                {
+                  method: "POST",
+                  body: formData,
+                }
+              );
 
-            const formatted = {
-              type: "audio",
-              audioUrl: newMsg.audioUrl,
-              sender: {
-                id: "u1",
-                name: newMsg.sender
-              },
-              timestamp: newMsg.time
-            };
+              const data = await res.json();
 
-            setRooms(prev => ({
-              ...prev,
-              [roomId]: {
-                ...prev[roomId],
-                messages: [...prev[roomId].messages, formatted]
-              }
-            }));
-          });
+              socketRef.current.emit("send_message", {
+                roomId,
+                sender: currentUser.name,
+                type: "audio",
+                audioUrl: data.url,
+              });
+            } catch (err) {
+              console.error("Upload failed:", err);
+            }
           }}
-          
         />
 
         <input

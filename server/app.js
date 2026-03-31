@@ -16,11 +16,8 @@ app.use(cors({
 
 app.use(express.json());
 
-console.log("roomsRoute =", typeof roomsRoute);
-console.log("messagesRoute =", typeof messagesRoute);
-
-
+app.use("/uploads", express.static("uploads"));
 app.use("/rooms", roomsRoute);
-app.use("/", messagesRoute);
+app.use("/messages", messagesRoute);
 
 module.exports = app;
