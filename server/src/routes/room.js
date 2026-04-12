@@ -1,31 +1,27 @@
 const express = require("express");
 const router = express.Router();
 const Room = require("../models/Room");
+const auth = require("../middleware/auth");
 
-// GET all rooms
-router.get("/", async (req, res) => {
-  try {
-    const rooms = await Room.find();
-    res.json(rooms);
-  } catch (error) {
-    console.error("GET /rooms error:", error);
-    res.status(500).json({ error: "Failed to fetch rooms" });
-  }
+// GET rooms (only user rooms)
+router.get("/", auth, async (req, res) => {
+  const rooms = await Room.find({
+    members: req.user.id,
+  });
+
+  res.json(rooms);
 });
 
-// CREATE new room
-router.post("/", async (req, res) => {
-  try {
-    console.log("Room body received:", req.body);
+// CREATE room
+router.post("/", auth, async (req, res) => {
+  const { name } = req.body;
 
-    const newRoom = new Room(req.body);
-    const savedRoom = await newRoom.save();
+  const room = await Room.create({
+    name,
+    members: [req.user.id],
+  });
 
-    res.json(savedRoom);
-  } catch (error) {
-    console.error("POST /rooms error:", error);
-    res.status(500).json({ error: "Failed to create room" });
-  }
+  res.json(room);
 });
-console.log("Room model:", Room);
+
 module.exports = router;

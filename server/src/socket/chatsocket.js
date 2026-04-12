@@ -1,37 +1,93 @@
-const Message = require("../models/Message");
+const jwt = require("jsonwebtoken");
+const Room = require("../models/Room");
+// const Message = require("../models/Message"); // (optional if DB save madtidre)
 
-const initSocket = (io) => {
+module.exports = (io) => {
   io.on("connection", (socket) => {
-    console.log("🟢 New client connected:", socket.id);
+    try {
+      // 🔐 STEP 7 — TOKEN VERIFY
+      const token = socket.handshake.auth.token;
 
-    // Join a room
-    socket.on("join_room", (roomId) => {
-      socket.join(roomId);
-      console.log(`Socket ${socket.id} joined room: ${roomId}`);
-    });
+      if (!token) {
+        console.log("No token → disconnect");
+        return socket.disconnect();
+      }
 
-    // Handle sending message
-    socket.on("send_message", async (messageData) => {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      // ✅ attach user to socket
+      socket.user = {
+        id: decoded.id,
+        name: decoded.name,
+      };
+
+      console.log("User connected:", socket.user.name);
+
+    } catch (err) {
+      console.log("Invalid token");
+      socket.disconnect();
+      return;
+    }
+
+    // ================================
+    // 📌 JOIN ROOM
+    // ================================
+    socket.on("joinRoom", async (roomId) => {
       try {
-        const newMessage = new Message(messageData);
-        const savedMessage = await newMessage.save();
+        const room = await Room.findById(roomId);
 
-        // Emit only to that room
-        io.to(messageData.roomId).emit("receive_message", savedMessage);
+        // 🔒 CHECK membership
+        if (!room || !room.members.includes(socket.user.id)) {
+          return socket.emit("error", "Not allowed to join this room");
+        }
 
-        console.log("Message saved and emitted:", savedMessage);
-      } catch (error) {
-        console.error("Socket message error:", error);
-        socket.emit("message_error", {
-          error: "Failed to send message",
-        });
+        socket.join(roomId);
+        console.log(`${socket.user.name} joined room ${roomId}`);
+
+      } catch (err) {
+        console.log(err);
       }
     });
 
+    // ================================
+    // 📌 SEND MESSAGE
+    // ================================
+    socket.on("sendMessage", async (data) => {
+      try {
+        const { roomId, text } = data;
+
+        const room = await Room.findById(roomId);
+
+        // 🔒 CHECK membership AGAIN (VERY IMPORTANT)
+        if (!room || !room.members.includes(socket.user.id)) {
+          return socket.emit("error", "Not allowed");
+        }
+
+        const message = {
+          roomId,
+          text,
+          sender: socket.user.name,   // ✅ STEP 8 (MAIN FIX)
+          senderId: socket.user.id,   // ✅ best practice
+          timestamp: new Date(),
+        };
+
+        // 👉 OPTIONAL: DB save
+        /*
+        await Message.create(message);
+        */
+
+        io.to(roomId).emit("receiveMessage", message);
+
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    // ================================
+    // 📌 DISCONNECT
+    // ================================
     socket.on("disconnect", () => {
-      console.log("🔴 Client disconnected:", socket.id);
+      console.log("User disconnected:", socket.user?.name);
     });
   });
 };
-
-module.exports = initSocket;
