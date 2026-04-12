@@ -7,114 +7,115 @@ const currentUser = {
   name: "You",
 };
 
-
 function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
   const socketRef = useRef(null);
-
-useEffect(() => {
-  socketRef.current = io(process.env.REACT_APP_API);
-
-  return () => {
-    socketRef.current.disconnect();
-  };
-}, []);
   const fileInputRef = useRef(null);
   const [input, setInput] = useState("");
   const bottomRef = useRef(null);
+  const seekFunctions = useRef({});
 
-const sendMessage = () => {
-  if (!input.trim() || !socketRef.current) return;
+  // 🔥 connect socket
+  useEffect(() => {
+    socketRef.current = io(process.env.REACT_APP_API);
 
-  const msg = {
-    roomId,
-    sender: currentUser.name,
-    text: input,
-    type: "text"
-  };
-
-  socketRef.current.emit("send_message", msg);
-
-  setInput("");
-};
-useEffect(() => {
-  if (!roomId) return;
-
-  const socket = socketRef.current;
-  if (!socket) return;
-
-  socket.emit("join_room", roomId);
-}, [roomId]);
-
-useEffect(() => {
-  if (!socketRef.current) return;
-
-  socketRef.current.on("receive_message", (msg) => {
-    const formatted = {
-      type: msg.type || "text",
-      text: msg.text,
-      audioUrl: msg.audioUrl,
-      sender: {
-        id: msg.sender === currentUser.name ? "u1" : "u2",
-        name: msg.sender,
-      },
-      timestamp: msg.timestamp || Date.now(),
+    return () => {
+      socketRef.current.disconnect();
     };
+  }, []);
 
-setRooms(prev => {
-  if (!msg.roomId) return prev; // 🔥 prevent corruption
+  // 🔥 join room
+  useEffect(() => {
+    if (!roomId || !socketRef.current) return;
+    socketRef.current.emit("join_room", roomId);
+  }, [roomId]);
 
-  return {
-    ...prev,
-    [msg.roomId]: {
-      ...prev[msg.roomId],
-      messages: [...(prev[msg.roomId]?.messages || []), formatted]
-    }
-  };
-});
+  // 🔥 receive messages
+  useEffect(() => {
+    if (!socketRef.current) return;
 
-  });
+    socketRef.current.on("receive_message", (msg) => {
+      const formatted = {
+        type: msg.type || "text",
+        text: msg.text,
+        audioUrl: msg.audioUrl,
+        sender: {
+          id: msg.sender === currentUser.name ? "u1" : "u2",
+          name: msg.sender,
+        },
+        timestamp: msg.timestamp || Date.now(),
+      };
 
-  return () => {
-    socketRef.current.off("receive_message");
-  };
-}, []);
+      setRooms((prev) => {
+        if (!msg.roomId) return prev;
 
+        return {
+          ...prev,
+          [msg.roomId]: {
+            ...prev[msg.roomId],
+            messages: [
+              ...(prev[msg.roomId]?.messages || []),
+              formatted,
+            ],
+          },
+        };
+      });
+    });
 
-  // 🔥 auto-scroll
+    return () => {
+      socketRef.current.off("receive_message");
+    };
+  }, []);
+
+  // 🔥 fetch old messages
+  useEffect(() => {
+    if (!roomId) return;
+
+    fetch(`${process.env.REACT_APP_API}/messages/${roomId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const formatted = data.map((msg) => ({
+          type: msg.type || "text",
+          text: msg.text,
+          audioUrl: msg.audioUrl,
+          sender: {
+            id: msg.sender === "You" ? "u1" : "u2",
+            name: msg.sender,
+          },
+          timestamp: msg.timestamp,
+        }));
+
+        setRooms((prev) => ({
+          ...prev,
+          [roomId]: {
+            ...prev[roomId],
+            messages: formatted,
+          },
+        }));
+      })
+      .catch((err) => console.error("Fetch messages error:", err));
+  }, [roomId]);
+
+  // 🔥 auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [room?.messages]);
 
-  const seekFunctions = useRef({});
+  // 🔥 send message
+  const sendMessage = () => {
+    if (!input.trim() || !socketRef.current) return;
 
-  useEffect(() => {
-  if (!roomId) return;
+    const msg = {
+      roomId,
+      sender: currentUser.name,
+      text: input,
+      type: "text",
+    };
 
-  fetch(`${process.env.REACT_APP_API}/messages/${roomId}`)
-    .then(res => res.json())
-    .then(data => {
-    const formatted = data.map(msg => ({
-      type: msg.type || "text",
-      text: msg.text,
-      audioUrl: msg.audioUrl,
-      sender: {
-        id: msg.sender === "You" ? "u1" : "u2",
-        name: msg.sender,
-      },
-      timestamp: msg.timestamp,
-    }));
-        setRooms(prev => ({
-          ...prev,
-          [roomId]: {
-            ...prev[roomId],
-            messages: formatted
-          }
-        }));
-      })
-      .catch(err => console.error("Fetch messages error:", err));
+    socketRef.current.emit("send_message", msg);
+    setInput("");
+  };
 
-  }, [roomId]);
-
+  // 🔥 timestamp parser (for audio seeking)
   const parseTextWithTimestamps = (text) => {
     return text.split(/(\d+:\d+)/g).map((part, index) => {
       const match = part.match(/^(\d+):(\d+)$/);
@@ -136,12 +137,11 @@ setRooms(prev => {
               const audioIndexes = Object.keys(seekFunctions.current);
               if (!audioIndexes.length) return;
 
-              const lastAudioIndex = audioIndexes[audioIndexes.length - 1];
+              const lastAudioIndex =
+                audioIndexes[audioIndexes.length - 1];
               const seekFn = seekFunctions.current[lastAudioIndex];
 
-              if (seekFn) {
-                seekFn(totalSeconds);
-              }
+              if (seekFn) seekFn(totalSeconds);
             }}
           >
             {part}
@@ -168,13 +168,14 @@ setRooms(prev => {
         >
           ☰
         </button>
-        {room.name}
-        </div>
+        {room?.name}
+      </div>
+
       <div
         className="messages"
         style={{ display: "flex", flexDirection: "column" }}
       >
-        {room.messages.map((msg, i) => {
+        {room?.messages?.map((msg, i) => {
           if (msg.type === "text") {
             return (
               <MessageBubble
@@ -185,6 +186,7 @@ setRooms(prev => {
               />
             );
           }
+
           return (
             <MessageBubble
               key={i}
@@ -208,11 +210,12 @@ setRooms(prev => {
             cursor: "pointer",
             fontSize: "1.5rem",
             marginRight: "10px",
-            color: "#8696a0"
+            color: "#8696a0",
           }}
         >
           📎
         </button>
+
         <input
           type="file"
           ref={fileInputRef}
@@ -225,27 +228,26 @@ setRooms(prev => {
             formData.append("audio", file);
 
             try {
-              // 🔥 upload to server
-              const res = await fetch(`${process.env.REACT_APP_API}/messages/upload`, {
-                method: "POST",
-                body: formData,
-              });
+              const res = await fetch(
+                `${process.env.REACT_APP_API}/messages/upload`,
+                {
+                  method: "POST",
+                  body: formData,
+                }
+              );
 
               const data = await res.json();
 
-              // 🔥 send via socket
               socketRef.current.emit("send_message", {
                 roomId,
                 sender: currentUser.name,
                 type: "audio",
-                audioUrl: data.url, // REAL URL now
+                audioUrl: data.url,
               });
-
             } catch (err) {
               console.error("Upload failed:", err);
             }
           }}
-          
         />
 
         <input

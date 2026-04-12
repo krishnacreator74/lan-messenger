@@ -1,33 +1,37 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import ChatPage from "./pages/ChatPage";
 import "./styles/app.css";
 
 function App() {
-
   const [rooms, setRooms] = useState({});
   const [activeRoom, setActiveRoom] = useState(null);
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API}/rooms`)
+    fetch("http://localhost:5000/rooms")
       .then(res => res.json())
       .then(data => {
-        // convert array into object structure frontend expects
         const formattedRooms = {};
 
         data.forEach(room => {
-          formattedRooms[room._id] = {
+          formattedRooms[room._id || room.id] = {
             name: room.name,
             unread: 0,
-            messages: [] // start empty for now
+            messages: []
           };
         });
 
         setRooms(formattedRooms);
-        setActiveRoom(data[0]?._id);
+        setActiveRoom(data[0]?._id || data[0]?.id);
       })
       .catch(err => console.error("Error fetching rooms:", err));
   }, []);
 
+  // 🔥 WAIT until data is ready
+  if (!activeRoom || !rooms[activeRoom]) {
+    return <div style={{ padding: "20px" }}>Loading...</div>;
+  }
+
+  // 🔥 MAIN APP
   return (
     <ChatPage
       rooms={rooms}
