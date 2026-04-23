@@ -2,10 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
 import { io } from "socket.io-client";
 
-// ✅ Use logged-in user from localStorage
-const currentUser = JSON.parse(localStorage.getItem("user"));
-
 function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
+  const currentUser = JSON.parse(localStorage.getItem("user")); // ✅ moved inside
+
   const socketRef = useRef(null);
   const fileInputRef = useRef(null);
   const [input, setInput] = useState("");
@@ -64,14 +63,16 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
     return () => {
       socketRef.current.off("receive_message");
     };
-  }, []);
+  }, [setRooms]);
 
   // 🔥 fetch old messages
   useEffect(() => {
     if (!roomId) return;
 
     fetch(`${process.env.REACT_APP_API}/messages/${roomId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
     })
       .then((res) => res.json())
       .then((data) => {
@@ -95,7 +96,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
         }));
       })
       .catch((err) => console.error("Fetch messages error:", err));
-  }, [roomId]);
+  }, [roomId, setRooms]);
 
   // 🔥 auto scroll
   useEffect(() => {
@@ -235,7 +236,9 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
                 `${process.env.REACT_APP_API}/messages/upload`,
                 {
                   method: "POST",
-                  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
                   body: formData,
                 }
               );
