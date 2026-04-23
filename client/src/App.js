@@ -1,21 +1,15 @@
-import React, { useState, useEffect } from "react";
-import ChatPage from "./pages/ChatPage";
-import LoginPage from "./pages/LoginPage";
+const [rooms, setRooms] = useState({});
+const [activeRoom, setActiveRoom] = useState(null);
 
-function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
+const token = localStorage.getItem("token");
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const user = localStorage.getItem("user");
-    if (token && user) setLoggedIn(true);
-  }, []);
-
-  return loggedIn ? (
-    <ChatPage onLogout={() => setLoggedIn(false)} />
-  ) : (
-    <LoginPage onAuthSuccess={() => setLoggedIn(true)} />
-  );
-}
-
-export default App;
+return token ? (
+  <ChatPage
+    rooms={rooms}
+    activeRoom={activeRoom}
+    setActiveRoom={setActiveRoom}
+    setRooms={setRooms}
+  />
+) : (
+  <LoginPage />
+);
