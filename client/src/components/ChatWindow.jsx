@@ -2,21 +2,20 @@ import { useState, useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
 import { io } from "socket.io-client";
 
-const currentUser = {
-  id: "u1",
-  name: "You",
-};
-
 function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
+  const currentUser = JSON.parse(localStorage.getItem("user")); // ✅ moved inside
+
   const socketRef = useRef(null);
   const fileInputRef = useRef(null);
   const [input, setInput] = useState("");
   const bottomRef = useRef(null);
   const seekFunctions = useRef({});
 
-  // 🔥 connect socket
+  // 🔥 connect socket with auth
   useEffect(() => {
-    socketRef.current = io(process.env.REACT_APP_API);
+    socketRef.current = io(process.env.REACT_APP_API, {
+      auth: { token: localStorage.getItem("token") },
+    });
 
     return () => {
       socketRef.current.disconnect();
@@ -39,7 +38,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
         text: msg.text,
         audioUrl: msg.audioUrl,
         sender: {
-          id: msg.sender === currentUser.name ? "u1" : "u2",
+          id: msg.senderId,
           name: msg.sender,
         },
         timestamp: msg.timestamp || Date.now(),
@@ -64,13 +63,17 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
     return () => {
       socketRef.current.off("receive_message");
     };
-  }, []);
+  }, [setRooms]);
 
   // 🔥 fetch old messages
   useEffect(() => {
     if (!roomId) return;
 
-    fetch(`${process.env.REACT_APP_API}/messages/${roomId}`)
+    fetch(`${process.env.REACT_APP_API}/messages/${roomId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    })
       .then((res) => res.json())
       .then((data) => {
         const formatted = data.map((msg) => ({
@@ -78,7 +81,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
           text: msg.text,
           audioUrl: msg.audioUrl,
           sender: {
-            id: msg.sender === "You" ? "u1" : "u2",
+            id: msg.senderId,
             name: msg.sender,
           },
           timestamp: msg.timestamp,
@@ -93,7 +96,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
         }));
       })
       .catch((err) => console.error("Fetch messages error:", err));
-  }, [roomId]);
+  }, [roomId, setRooms]);
 
   // 🔥 auto scroll
   useEffect(() => {
@@ -106,6 +109,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
 
     const msg = {
       roomId,
+      senderId: currentUser.id || currentUser._id,
       sender: currentUser.name,
       text: input,
       type: "text",
@@ -232,6 +236,9 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
                 `${process.env.REACT_APP_API}/messages/upload`,
                 {
                   method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
                   body: formData,
                 }
               );
@@ -240,6 +247,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
 
               socketRef.current.emit("send_message", {
                 roomId,
+                senderId: currentUser.id,
                 sender: currentUser.name,
                 type: "audio",
                 audioUrl: data.url,
