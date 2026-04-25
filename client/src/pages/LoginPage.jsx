@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { login, signup } from "../services/authService";
 
-const LoginPage = () => {
+const LoginPage = ({ onAuthSuccess }) => {
   const [isSignup, setIsSignup] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -22,7 +22,7 @@ const LoginPage = () => {
       localStorage.setItem("token", res.token);
       localStorage.setItem("user", JSON.stringify(res.user));
 
-      window.location.reload();
+      onAuthSuccess(); // 🔥 no reload
     } catch (err) {
       console.error(err);
       alert("Auth failed");
@@ -34,11 +34,7 @@ const LoginPage = () => {
       <h2>{isSignup ? "Signup" : "Login"}</h2>
 
       {isSignup && (
-        <input
-          name="name"
-          placeholder="Name"
-          onChange={handleChange}
-        />
+        <input name="name" placeholder="Name" onChange={handleChange} />
       )}
 
       <input name="email" placeholder="Email" onChange={handleChange} />

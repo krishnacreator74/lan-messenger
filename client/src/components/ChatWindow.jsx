@@ -109,7 +109,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
 
     const msg = {
       roomId,
-      senderId: currentUser.id,
+      senderId: currentUser.id || currentUser._id,
       sender: currentUser.name,
       text: input,
       type: "text",

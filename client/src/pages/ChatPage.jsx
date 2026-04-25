@@ -3,7 +3,7 @@ import Sidebar from "../components/Sidebar";
 import ChatWindow from "../components/ChatWindow";
 import { getRooms } from "../services/roomService";
 
-function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms }) {
+function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms, onLogout }) {
   const [showSidebar, setShowSidebar] = useState(true);
 
   useEffect(() => {
@@ -11,10 +11,10 @@ function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms }) {
       try {
         const data = await getRooms();
 
-        // convert array → object
         const formatted = {};
         data.forEach((room) => {
-          formatted[room.id] = {
+          const id = room._id || room.id; // 🔥 important fix
+          formatted[id] = {
             ...room,
             messages: [],
             unread: 0,
@@ -35,7 +35,7 @@ function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms }) {
       ...prev,
       [roomId]: {
         ...prev[roomId],
-        unread: 0, // clear unread
+        unread: 0,
       },
     }));
 
@@ -45,16 +45,9 @@ function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms }) {
 
   return (
     <div className={`app ${showSidebar ? "" : "sidebar-hidden"}`}>
-
-      {/* Logout Button */}
-      <button
-        onClick={() => {
-          localStorage.clear();
-          window.location.reload();
-        }}
-      >
-        Logout
-      </button>
+      
+      {/* Logout */}
+      <button onClick={onLogout}>Logout</button>
 
       {/* Sidebar */}
       <Sidebar
@@ -63,7 +56,7 @@ function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms }) {
         onRoomSelect={handleRoomSelect}
       />
 
-      {/* Right Panel */}
+      {/* Chat */}
       {activeRoom && rooms[activeRoom] ? (
         <ChatWindow
           room={rooms[activeRoom]}
