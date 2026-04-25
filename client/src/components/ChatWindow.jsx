@@ -3,7 +3,16 @@ import MessageBubble from "./MessageBubble";
 import { io } from "socket.io-client";
 
 function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
-  const currentUser = JSON.parse(localStorage.getItem("user")); // ✅ moved inside
+  let currentUser = null;
+
+try {
+  const storedUser = localStorage.getItem("user");
+  if (storedUser && storedUser !== "undefined") {
+    currentUser = JSON.parse(storedUser);
+  }
+} catch (err) {
+  console.error("Invalid user in localStorage");
+}
 
   const socketRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -104,20 +113,60 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
   }, [room?.messages]);
 
   // 🔥 send message
-  const sendMessage = () => {
-    if (!input.trim() || !socketRef.current) return;
+const sendMessage = async () => {
+  if (!input.trim()) return;
 
-    const msg = {
+  try {
+    // 🔴 SAVE TO DB FIRST
+    const res = await fetch(`${process.env.REACT_APP_API}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({
+        roomId,
+        text: input,
+      }),
+    });
+
+    const savedMsg = await res.json();
+
+  // 🔴 UPDATE UI INSTANTLY in sendMessage function
+  setRooms((prev) => ({
+    ...prev,
+    [roomId]: {
+      ...prev[roomId],
+      messages: [
+        ...(prev[roomId]?.messages || []),
+        {
+          type: "text",
+          text: savedMsg.text,
+          sender: {
+            // Ensure these match EXACTLY what your currentUser object has
+            id: savedMsg.senderId || savedMsg.sender?._id, 
+            name: savedMsg.senderName || savedMsg.sender,
+          },
+          timestamp: savedMsg.createdAt || Date.now(),
+        },
+      ],
+    },
+  }));
+
+    // 🔴 OPTIONAL: still send via socket for others
+    socketRef.current.emit("send_message", {
       roomId,
-      senderId: currentUser.id || currentUser._id,
-      sender: currentUser.name,
-      text: input,
+      senderId: savedMsg.senderId,
+      sender: savedMsg.sender,
+      text: savedMsg.text,
       type: "text",
-    };
+    });
 
-    socketRef.current.emit("send_message", msg);
     setInput("");
-  };
+  } catch (err) {
+    console.error("Send message error:", err);
+  }
+};
 
   // 🔥 timestamp parser (for audio seeking)
   const parseTextWithTimestamps = (text) => {
@@ -158,53 +207,27 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
 
   return (
     <div className="chat">
-      <div className="chat-header">
-        <button
-          onClick={toggleSidebar}
-          style={{
-            marginRight: "0.5rem",
-            background: "none",
-            border: "none",
-            color: "white",
-            cursor: "pointer",
-            fontSize: "1.2rem",
-          }}
-        >
-          ☰
-        </button>
-        {room?.name}
-      </div>
+      {/* HEADER */}
 
-      <div
-        className="messages"
-        style={{ display: "flex", flexDirection: "column" }}
-      >
-        {room?.messages?.map((msg, i) => {
-          if (msg.type === "text") {
-            return (
-              <MessageBubble
-                key={i}
-                {...msg}
-                currentUser={currentUser}
-                text={parseTextWithTimestamps(msg.text)}
-              />
-            );
-          }
-
-          return (
-            <MessageBubble
-              key={i}
-              {...msg}
-              currentUser={currentUser}
-              onSeek={(fn) => {
-                seekFunctions.current[i] = fn;
-              }}
-            />
-          );
-        })}
+      {/* MESSAGES */}
+      <div className="messages">
+        {room?.messages?.map((msg, i) => (
+          <MessageBubble
+            key={i}
+            {...msg}
+            currentUser={currentUser}
+            onSeek={(seekFn) => {
+              if (msg.type === "audio") {
+                seekFunctions.current[i] = seekFn;
+              }
+            }}
+            text={msg.type === "text" ? parseTextWithTimestamps(msg.text) : msg.text}
+          />
+        ))}
         <div ref={bottomRef} />
       </div>
 
+      {/* INPUT */}
       <div className="chat-input">
         <button
           onClick={() => fileInputRef.current.click()}

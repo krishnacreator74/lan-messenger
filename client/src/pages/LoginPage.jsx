@@ -19,10 +19,19 @@ const LoginPage = ({ onAuthSuccess }) => {
         ? await signup(form)
         : await login(form);
 
+      if (!res.token || !res.user) {
+        throw new Error("Invalid auth response");
+      }
+
       localStorage.setItem("token", res.token);
       localStorage.setItem("user", JSON.stringify(res.user));
+      localStorage.setItem("user", JSON.stringify(res.user));
+      console.log("TOKEN SAVED:", res.token);
+      setTimeout(() => {
+        console.log("LOCAL TOKEN:", localStorage.getItem("token"));
+      }, 500);
 
-      onAuthSuccess(); // 🔥 no reload
+      onAuthSuccess(); // 🔥 IMPORTANT
     } catch (err) {
       console.error(err);
       alert("Auth failed");

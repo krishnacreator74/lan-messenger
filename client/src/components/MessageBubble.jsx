@@ -4,10 +4,13 @@ import WaveSurfer from "wavesurfer.js";
 function MessageBubble({ type, text, audioUrl, sender, currentUser, onSeek }) {
   const waveformRef = useRef(null);
   const waveSurferInstance = useRef(null);
-  const own = sender?.id === currentUser?.id;
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const senderId = sender?.id || sender?._id;
+  const currentUserId = currentUser?.id || currentUser?._id;
+
+  const own = senderId && currentUserId && senderId.toString() === currentUserId.toString();
 
   const seekTo = (seconds) => {
     if (waveSurferInstance.current) {
@@ -81,70 +84,60 @@ function MessageBubble({ type, text, audioUrl, sender, currentUser, onSeek }) {
   };
 
   return (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: own ? "flex-end" : "flex-start", // This pulls the bubble to the side
+      width: "100%",
+      padding: "2px 0"
+    }}
+  >
     <div
       style={{
-        maxWidth: "60%",
-        marginBottom: "0.8rem",
-        padding: "0.8rem",
-        borderRadius: "10px",
+        maxWidth: "65%",
+        padding: "8px 12px",
+        borderRadius: own ? "10px 0px 10px 10px" : "0px 10px 10px 10px", // WhatsApp style corners
         backgroundColor: own ? "#005c4b" : "#202c33",
-        alignSelf: own ? "flex-end" : "flex-start",
+        color: "#e9edef",
+        position: "relative",
+        boxShadow: "0 1px 0.5px rgba(0,0,0,0.13)"
       }}
     >
+      {/* Sender Name for group chats */}
+      {!own && sender?.name && (
+        <div style={{ 
+          fontSize: "0.75rem", 
+          fontWeight: "bold", 
+          color: "#25d366", // WhatsApp Green for names
+          marginBottom: "4px" 
+        }}>
+          {sender.name}
+        </div>
+      )}
 
-    {!own && (
-      <div
-        style={{
-          fontSize: "0.75rem",
-          fontWeight: "bold",
-          marginBottom: "4px",
-          opacity: 0.7,
-        }}
-      >
-        {own ? "You" : sender?.name}
+      <div style={{ fontSize: "0.95rem", lineHeight: "1.3" }}>
+        {type === "text" && text}
       </div>
-    )}
-
-
-      {type === "text" && text}
 
       {type === "audio" && (
-        <>
-          <div
-            ref={waveformRef}
-            style={{ width: "400px", maxWidth: "100%" }}
-          />
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: "6px",
-              fontSize: "0.85rem",
-              opacity: 0.8,
-            }}
-          >
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-
-          <button
-            onClick={togglePlay}
-            style={{
-              marginTop: "6px",
-              background: "none",
-              border: "none",
-              color: "#ffffff",
-              cursor: "pointer",
-              fontSize: "1rem",
-            }}
-          >
-            {isPlaying ? "⏸ Pause" : "▶ Play"}
-          </button>
-        </>
+        <div style={{ minWidth: "250px" }}>
+           {/* Your WaveSurfer Code here... */}
+        </div>
       )}
+      
+      {/* Optional: Add a timestamp at the bottom right of the bubble */}
+      <div style={{ 
+        fontSize: "0.65rem", 
+        textAlign: "right", 
+        opacity: 0.5, 
+        marginTop: "4px" 
+      }}>
+        10:15 AM
+      </div>
     </div>
-  );
+  </div>
+);
 }
 
 export default MessageBubble;

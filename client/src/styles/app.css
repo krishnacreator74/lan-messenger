@@ -1,52 +1,39 @@
+/* Update these specific blocks in your CSS file */
+
 .app {
   display: flex;
   height: 100vh;
-  position: relative;
+  width: 100vw; /* Ensure full width */
+  background-color: #111b21;
   overflow: hidden;
 }
 
-
-/* SIDEBAR */
 .sidebar {
-  position: absolute;
-  left: 0;
-  top: 0;
+  width: 300px; /* Slightly wider for better UX */
+  min-width: 300px;
   height: 100%;
-  width: 25%;
-  min-width: 260px;
-
   background-color: #111b21;
   border-right: 1px solid #202c33;
-  padding: 2rem;
-
-  transition: transform 0.3s ease;
-  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s ease; /* Smooth slide */
 }
 
+/* When hidden, slide it out of view by shifting margin */
+.app.sidebar-hidden .sidebar {
+  margin-left: -300px;
+}
 
-
-/* CHAT AREA */
 .chat {
-  width: 100%;
+  flex: 1; /* This makes chat take up ALL remaining space */
   display: flex;
   flex-direction: column;
   background-color: #0b141a;
   position: relative;
+  min-width: 0; /* Prevents flex items from bursting container */
 }
 
-
-/* Sidebar collapsed */
-.app.sidebar-hidden .sidebar {
-  transform: translateX(-100%);
-}
-
-
-/* Chat expands */
-.app.sidebar-hidden .chat {
-  width: 100%;
-}
-
-
+/* FIX THE DOODLE: It was likely covering your buttons */
 .chat::before {
   content: "";
   position: absolute;
@@ -55,60 +42,116 @@
   width: 100%;
   height: 100%;
   background-image: url("../img/doodle.png");
-  background-size: contain;
-  opacity: 0.2;
+  background-size: 400px; /* Repeating patterns look better smaller */
+  opacity: 0.05; /* 0.2 is usually too bright for dark mode */
   z-index: 0;
-  pointer-events: none;   /* IMPORTANT */
-
+  pointer-events: none; 
 }
 
-.messages {
-  flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
-
-  position: relative;
-  z-index: 2;
-}
-
-
-
-/* HEADER */
+/* HEADER STYLING */
 .chat-header {
-  padding: 1rem;
+  height: 60px;
+  padding: 0 1rem;
   background-color: #202c33;
-  font-weight: bold;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  position: relative;
-  z-index: 11;
+  justify-content: space-between;
+  z-index: 10;
+  color: #e9edef;
 }
 
+.chat-header button {
+    background: #2a3942;
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
 
-
-/* INPUT */
+/* MESSAGES AREA */
+.messages {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1; /* Above the doodle */
+}
+/* Ensure the input bar stays at the bottom and fills the width */
 .chat-input {
-  padding: 1rem;
+  height: 62px;
   background-color: #202c33;
   display: flex;
-  z-index: 1;
+  align-items: center;
+  padding: 5px 16px;
+  gap: 12px;
+  border-top: 1px solid rgba(134, 150, 160, 0.15);
+  position: sticky; /* Keeps it at the bottom of the container */
+  bottom: 0;
+  width: 100%; /* CRITICAL: ensures it spans the chat window */
+  box-sizing: border-box;
 }
 
+/* Make the text field stretch to fill the gap between icons */
 .chat-input input {
-  flex: 1;
-  padding: 0.6rem 1rem;
-  border-radius: 20px;
+  flex: 1; /* CRITICAL: tells the input to grow and fill the space */
+  height: 42px;
+  padding: 9px 12px;
+  margin: 5px 0;
   border: none;
-  outline: none;
+  border-radius: 8px;
   background-color: #2a3942;
-  color: white;
+  color: #d1d7db;
+  font-size: 15px;
+  outline: none;
 }
-.menu-btn {
+
+/* Optional: Style the attachment button to look more aligned */
+.chat-input button {
   background: none;
   border: none;
-  color: #e9edef;
-  font-size: 1.3rem;
+  color: #8696a0;
   cursor: pointer;
-  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+/* Button Styling */
+.action-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.action-btn:hover {
+  opacity: 0.8;
+}
+
+.add-user {
+  background-color: #00a884; /* WhatsApp Green */
+  color: white;
+}
+
+.logout {
+  background-color: transparent;
+  color: #f15c5c;
+  border: 1px solid #f15c5c;
+}
+
+/* Ensure header spaces correctly */
+.chat-header {
+  height: 60px;
+  min-height: 60px;
+  padding: 0 20px;
+  background-color: #202c33;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(134, 150, 160, 0.15);
 }
