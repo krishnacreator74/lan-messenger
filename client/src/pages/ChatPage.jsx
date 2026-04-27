@@ -6,9 +6,14 @@ import { getRooms } from "../services/roomService";
 const API = process.env.REACT_APP_API;
 
 function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms, onLogout }) {
+  // =========================
+  // STATE
+  // =========================
   const [showSidebar, setShowSidebar] = useState(true);
 
-  // 🔥 FETCH ROOMS
+  // =========================
+  // FETCH ROOMS
+  // =========================
   useEffect(() => {
     const fetchRooms = async () => {
       try {
@@ -20,6 +25,7 @@ function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms, onLogout }) {
         if (Array.isArray(data)) {
           data.forEach((room) => {
             const id = room._id || room.id;
+
             formatted[id] = {
               ...room,
               messages: [],
@@ -37,13 +43,14 @@ function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms, onLogout }) {
     fetchRooms();
   }, [setRooms]);
 
-  // 🔥 SELECT ROOM
+  // =========================
+  // HANDLERS
+  // =========================
   const handleRoomSelect = (roomId) => {
     setActiveRoom(roomId);
     setShowSidebar(false);
   };
 
-  // 🔥 CREATE ROOM
   const handleCreateRoom = async () => {
     const name = prompt("Enter room name");
     if (!name) return;
@@ -76,18 +83,18 @@ function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms, onLogout }) {
     }
   };
 
-  // 🔥 ADD USER TO ROOM
   const handleAddUser = async () => {
     if (!activeRoom) {
       alert("Select a room first");
       return;
     }
 
-    const userId = prompt(
-      `Add user to "${rooms[activeRoom]?.name}"\nEnter user ID:`
+    // 🔥 CHANGE THIS
+    const email = prompt(
+      `Add user to "${rooms[activeRoom]?.name}"\nEnter user email:`
     );
 
-    if (!userId) return;
+    if (!email) return;
 
     try {
       console.log("Adding user to room:", activeRoom);
@@ -98,80 +105,117 @@ function ChatPage({ rooms, activeRoom, setActiveRoom, setRooms, onLogout }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({ userId }),
+        // 🔥 CHANGE THIS
+        body: JSON.stringify({ email }),
       });
 
-      alert("User added ✅");
+      alert("User added");
     } catch (err) {
       console.error(err);
     }
   };
-return (
-  <div className={`app ${showSidebar ? "" : "sidebar-hidden"}`}>
-    <Sidebar
-      rooms={rooms}
-      activeRoom={activeRoom}
-      onRoomSelect={handleRoomSelect}
-      // Pro-tip: Pass it to sidebar too so you can create rooms anytime
-      onCreateRoom={handleCreateRoom} 
-    />
+  // =========================
+  // DERIVED STATE
+  // =========================
+  const activeRoomData = rooms[activeRoom];
 
-    <div className="chat">
-      <div className="chat-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <button className="menu-btn" onClick={() => setShowSidebar((s) => !s)}>☰</button>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: "1.1rem", color: "#e9edef" }}>
-              {rooms[activeRoom]?.name || "LAN MESSENGER"}
-            </span>
+  // =========================
+  // UI
+  // =========================
+  return (
+    <div className={`app ${showSidebar ? "" : "sidebar-hidden"}`}>
+      {/* SIDEBAR */}
+      <Sidebar
+        rooms={rooms}
+        activeRoom={activeRoom}
+        onRoomSelect={handleRoomSelect}
+        onCreateRoom={handleCreateRoom}
+      />
+
+      {/* CHAT AREA */}
+      <div className="chat">
+        {/* HEADER */}
+        <div className="chat-header">
+          <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+            <button
+              className="menu-btn"
+              onClick={() => setShowSidebar((s) => !s)}
+            >
+              ☰
+            </button>
+
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "1.1rem", color: "#e9edef" }}>
+                {activeRoomData?.name || "LAN MESSENGER"}
+              </span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              gap: "12px",
+            }}
+          >
+            {activeRoom && (
+              <button
+                className="action-btn add-user"
+                onClick={handleAddUser}
+              >
+                + Add Member
+              </button>
+            )}
+
+            <button className="action-btn logout" onClick={onLogout}>
+              Logout
+            </button>
           </div>
         </div>
 
-        <div style={{ marginLeft: "auto", display: "flex", gap: "12px" }}>
-          {activeRoom && (
-            <button className="action-btn add-user" onClick={handleAddUser}>
-              + Add Member
-            </button>
-          )}
-          <button className="action-btn logout" onClick={onLogout}>Logout</button>
-        </div>
-      </div>
-
-      {!activeRoom ? (
-        <div style={{ 
-          flex: 1, 
-          display: "flex", 
-          flexDirection: "column", 
-          alignItems: "center", 
-          justifyContent: "center",
-          backgroundColor: "#222e35" // Standard WhatsApp empty state color
-        }}>
-          <div style={{ fontSize: "80px", opacity: 0.1 }}>💬</div>
-          <h2 style={{ color: "#e9edef", marginTop: "20px" }}>No Chat Selected</h2>
-          <p style={{ color: "#8696a0" }}>Send and receive messages in private groups.</p>
-          
-          {/* This button uses the function, fixing the ESLint error */}
-          <button 
-            className="action-btn add-user" 
-            style={{ marginTop: "20px", padding: "10px 25px" }}
-            onClick={handleCreateRoom}
+        {/* EMPTY STATE */}
+        {!activeRoom ? (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#222e35",
+            }}
           >
-            Create New Group
-          </button>
-        </div>
-      ) : (
-        <ChatWindow
-          room={rooms[activeRoom]}
-          roomId={activeRoom}
-          setRooms={setRooms}
-          toggleSidebar={() => setShowSidebar((s) => !s)}
-          onLogout={onLogout}
-          onAddUser={handleAddUser}
-        />
-      )}
+            <div style={{ fontSize: "80px", opacity: 0.1 }}>💬</div>
+
+            <h2 style={{ color: "#e9edef", marginTop: "20px" }}>
+              No Chat Selected
+            </h2>
+
+            <p style={{ color: "#8696a0" }}>
+              Send and receive messages in private groups.
+            </p>
+
+            <button
+              className="action-btn add-user"
+              style={{ marginTop: "20px", padding: "10px 25px" }}
+              onClick={handleCreateRoom}
+            >
+              Create New Group
+            </button>
+          </div>
+        ) : (
+          <ChatWindow
+            room={activeRoomData}
+            roomId={activeRoom}
+            setRooms={setRooms}
+            toggleSidebar={() => setShowSidebar((s) => !s)}
+            onLogout={onLogout}
+            onAddUser={handleAddUser}
+          />
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
 export default ChatPage;

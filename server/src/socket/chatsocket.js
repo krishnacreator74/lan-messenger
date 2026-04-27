@@ -1,11 +1,13 @@
 const jwt = require("jsonwebtoken");
 const Room = require("../models/Room");
-// const Message = require("../models/Message"); // (optional if DB save madtidre)
+// const Message = require("../models/Message");
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
+    // =========================
+    // AUTHENTICATION
+    // =========================
     try {
-      // 🔐 STEP 7 — TOKEN VERIFY
       const token = socket.handshake.auth.token;
 
       if (!token) {
@@ -15,50 +17,45 @@ module.exports = (io) => {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // ✅ attach user to socket
       socket.user = {
         id: decoded.id,
         name: decoded.name,
       };
 
       console.log("User connected:", socket.user.name);
-
     } catch (err) {
       console.log("Invalid token");
       socket.disconnect();
       return;
     }
 
-    // ================================
-    // 📌 JOIN ROOM
-    // ================================
+    // =========================
+    // JOIN ROOM
+    // =========================
     socket.on("joinRoom", async (roomId) => {
       try {
         const room = await Room.findById(roomId);
 
-        // 🔒 CHECK membership
         if (!room || !room.members.includes(socket.user.id)) {
           return socket.emit("error", "Not allowed to join this room");
         }
 
         socket.join(roomId);
         console.log(`${socket.user.name} joined room ${roomId}`);
-
       } catch (err) {
-        console.log(err);
+        console.error("Join room error:", err);
       }
     });
 
-    // ================================
-    // 📌 SEND MESSAGE
-    // ================================
+    // =========================
+    // SEND MESSAGE
+    // =========================
     socket.on("sendMessage", async (data) => {
       try {
         const { roomId, text } = data;
 
         const room = await Room.findById(roomId);
 
-        // 🔒 CHECK membership AGAIN (VERY IMPORTANT)
         if (!room || !room.members.includes(socket.user.id)) {
           return socket.emit("error", "Not allowed");
         }
@@ -66,26 +63,25 @@ module.exports = (io) => {
         const message = {
           roomId,
           text,
-          sender: socket.user.name,   // ✅ STEP 8 (MAIN FIX)
-          senderId: socket.user.id,   // ✅ best practice
+          sender: socket.user.name,
+          senderId: socket.user.id,
           timestamp: new Date(),
         };
 
-        // 👉 OPTIONAL: DB save
+        // Optional DB save
         /*
         await Message.create(message);
         */
 
         io.to(roomId).emit("receiveMessage", message);
-
       } catch (err) {
-        console.log(err);
+        console.error("Send message error:", err);
       }
     });
 
-    // ================================
-    // 📌 DISCONNECT
-    // ================================
+    // =========================
+    // DISCONNECT
+    // =========================
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.user?.name);
     });

@@ -1,100 +1,94 @@
 import { useState, useEffect, useRef } from "react";
-import MessageBubble from "./MessageBubble";
 import { io } from "socket.io-client";
+import MessageBubble from "./MessageBubble";
 
 function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
-  let currentUser = null;
+  // =========================
+  // USER INIT
+  // =========================
+  const [currentUser, setCurrentUser] = useState(null);
 
-try {
-  const storedUser = localStorage.getItem("user");
-  if (storedUser && storedUser !== "undefined") {
-    currentUser = JSON.parse(storedUser);
-  }
-} catch (err) {
-  console.error("Invalid user in localStorage");
-}
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser && storedUser !== "undefined") {
+        setCurrentUser(JSON.parse(storedUser));
+      }
+    } catch (err) {
+      console.error("Invalid user in localStorage");
+    }
+  }, []);
 
   const socketRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [input, setInput] = useState("");
   const bottomRef = useRef(null);
   const seekFunctions = useRef({});
+  const [input, setInput] = useState("");
 
-  // 🔥 connect socket with auth
+  // =========================
+  // SOCKET CONNECTION
+  // =========================
   useEffect(() => {
     socketRef.current = io(process.env.REACT_APP_API, {
       auth: { token: localStorage.getItem("token") },
     });
 
-    return () => {
-      socketRef.current.disconnect();
-    };
-  }, []);
-
-  // 🔥 join room
-  useEffect(() => {
-    if (!roomId || !socketRef.current) return;
-    socketRef.current.emit("join_room", roomId);
-  }, [roomId]);
-
-  // 🔥 receive messages
-  useEffect(() => {
-    if (!socketRef.current) return;
-
-    socketRef.current.on("receive_message", (msg) => {
+    const handleReceiveMessage = (msg) => {
+      if (!msg.roomId) return;
+      
       const formatted = {
         type: msg.type || "text",
         text: msg.text,
         audioUrl: msg.audioUrl,
         sender: {
-          id: msg.senderId,
+          id: String(msg.senderId),
           name: msg.sender,
         },
         timestamp: msg.timestamp || Date.now(),
       };
 
-      setRooms((prev) => {
-        if (!msg.roomId) return prev;
+      setRooms((prev) => ({
+        ...prev,
+        [msg.roomId]: {
+          ...(prev[msg.roomId] || {}),
+          messages: [...(prev[msg.roomId]?.messages || []), formatted],
+        },
+      }));
+    };
 
-        return {
-          ...prev,
-          [msg.roomId]: {
-            ...prev[msg.roomId],
-            messages: [
-              ...(prev[msg.roomId]?.messages || []),
-              formatted,
-            ],
-          },
-        };
-      });
-    });
+    socketRef.current.on("receiveMessage", handleReceiveMessage);
 
     return () => {
-      socketRef.current.off("receive_message");
+      socketRef.current.off("receiveMessage");
+      socketRef.current.disconnect();
     };
   }, [setRooms]);
 
-  // 🔥 fetch old messages
+  // =========================
+  // JOIN ROOM & FETCH OLD MESSAGES
+  // =========================
   useEffect(() => {
     if (!roomId) return;
 
-    fetch(`${process.env.REACT_APP_API}/messages/${roomId}`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => {
+    const fetchMessages = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${process.env.REACT_APP_API}/messages/${roomId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+
         const formatted = data.map((msg) => ({
           type: msg.type || "text",
           text: msg.text,
           audioUrl: msg.audioUrl,
           sender: {
-            id: msg.senderId,
-            name: msg.sender,
+            id: String(msg.senderId || msg.sender?._id || ""),
+            name: msg.senderName || msg.sender || "Unknown",
           },
           timestamp: msg.timestamp,
         }));
+
 
         setRooms((prev) => ({
           ...prev,
@@ -103,143 +97,151 @@ try {
             messages: formatted,
           },
         }));
-      })
-      .catch((err) => console.error("Fetch messages error:", err));
-  }, [roomId, setRooms]);
+      } catch (err) {
+        console.error("Fetch error:", err);
+      }
+    };
 
-  // 🔥 auto scroll
+    fetchMessages();
+  }, [roomId, setRooms]); 
+
+  // =========================
+  // AUTO SCROLL
+  // =========================
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const timer = setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [room?.messages]);
 
-  // 🔥 send message
-const sendMessage = async () => {
-  if (!input.trim()) return;
+  // =========================
+  // SEND MESSAGE
+  // =========================
+  const sendMessage = async () => {
+    if (!input.trim() || !roomId) return;
 
-  try {
-    // 🔴 SAVE TO DB FIRST
-    const res = await fetch(`${process.env.REACT_APP_API}/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({
-        roomId,
-        text: input,
-      }),
-    });
-
-    const savedMsg = await res.json();
-
-  // 🔴 UPDATE UI INSTANTLY in sendMessage function
-  setRooms((prev) => ({
-    ...prev,
-    [roomId]: {
-      ...prev[roomId],
-      messages: [
-        ...(prev[roomId]?.messages || []),
-        {
-          type: "text",
-          text: savedMsg.text,
-          sender: {
-            // Ensure these match EXACTLY what your currentUser object has
-            id: savedMsg.senderId || savedMsg.sender?._id, 
-            name: savedMsg.senderName || savedMsg.sender,
-          },
-          timestamp: savedMsg.createdAt || Date.now(),
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-      ],
-    },
-  }));
+        body: JSON.stringify({ roomId, text: input }),
+      });
 
-    // 🔴 OPTIONAL: still send via socket for others
-    socketRef.current.emit("send_message", {
-      roomId,
-      senderId: savedMsg.senderId,
-      sender: savedMsg.sender,
-      text: savedMsg.text,
-      type: "text",
-    });
+      const savedMsg = await res.json();
 
-    setInput("");
-  } catch (err) {
-    console.error("Send message error:", err);
-  }
-};
+      socketRef.current.emit("sendMessage", {
+        roomId,
+        senderId: currentUser.id || currentUser._id,
+        sender: currentUser.name,
+        text: savedMsg.text,
+        type: "text",
+      });
 
-  // 🔥 timestamp parser (for audio seeking)
+      setInput("");
+    } catch (err) {
+      console.error("Send message error:", err);
+    }
+  };
+
   const parseTextWithTimestamps = (text) => {
+    if (!text || typeof text !== "string") return text;
+
     return text.split(/(\d+:\d+)/g).map((part, index) => {
       const match = part.match(/^(\d+):(\d+)$/);
+      if (!match) return part;
 
-      if (match) {
-        const minutes = parseInt(match[1], 10);
-        const seconds = parseInt(match[2], 10);
-        const totalSeconds = minutes * 60 + seconds;
+      const totalSeconds = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
 
-        return (
-          <span
-            key={index}
-            style={{
-              color: "#25d366",
-              cursor: "pointer",
-              fontWeight: "bold",
-            }}
-            onClick={() => {
-              const audioIndexes = Object.keys(seekFunctions.current);
-              if (!audioIndexes.length) return;
-
-              const lastAudioIndex =
-                audioIndexes[audioIndexes.length - 1];
-              const seekFn = seekFunctions.current[lastAudioIndex];
-
-              if (seekFn) seekFn(totalSeconds);
-            }}
-          >
-            {part}
-          </span>
-        );
-      }
-      return part;
+      return (
+        <span
+          key={index}
+          className="timestamp-link"
+          style={{ color: "#25d366", cursor: "pointer", fontWeight: "bold" }}
+          onClick={() => {
+            const audioIndexes = Object.keys(seekFunctions.current);
+            if (!audioIndexes.length) return;
+            const lastAudioIndex = audioIndexes[audioIndexes.length - 1];
+            const seekFn = seekFunctions.current[lastAudioIndex];
+            if (seekFn) seekFn(totalSeconds);
+          }}
+        >
+          {part}
+        </span>
+      );
     });
   };
 
-  return (
-    <div className="chat">
-      {/* HEADER */}
-
-      {/* MESSAGES */}
-      <div className="messages">
-        {room?.messages?.map((msg, i) => (
-          <MessageBubble
-            key={i}
-            {...msg}
-            currentUser={currentUser}
-            onSeek={(seekFn) => {
-              if (msg.type === "audio") {
-                seekFunctions.current[i] = seekFn;
+  if (!roomId) {
+    return (
+      <div className="chat-placeholder" style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100%', 
+        backgroundColor: '#222e35', 
+        color: '#8696a0',
+        textAlign: 'center'
+      }}>
+        <div style={{ fontSize: '5rem', marginBottom: '20px' }}>💬</div>
+        <h2 style={{ color: '#e9edef' }}>LAN Messenger</h2>
+        <p style={{ maxWidth: '300px' }}>Select a contact or group to start chatting.</p>
+        
+        {/* You can add your "Create Group" button here if you like */}
+        <button 
+           onClick={toggleSidebar} // Assuming toggleSidebar opens your menu
+           style={{
+             marginTop: '20px',
+             padding: '10px 20px',
+             backgroundColor: '#00a884',
+             color: 'white',
+             border: 'none',
+             borderRadius: '24px',
+             cursor: 'pointer',
+             fontWeight: 'bold'
+           }}
+        >
+          Open Sidebar to Start
+        </button>
+      </div>
+    );
+  }
+return (
+    <div className="chat" key={roomId}> {/* key={roomId} forces refresh on change */}
+      <div className="messages" style={{ overflowY: "auto", height: "80vh" }}>
+        {/* 3. Improved Loading check */}
+        {!room?.messages ? (
+          <div className="loading" style={{ color: "#8696a0", textAlign: "center", marginTop: "20px" }}>
+            Loading messages...
+          </div>
+        ) : (
+          room.messages.map((msg, i) => (
+            <MessageBubble
+              key={`${roomId}-${i}`} 
+              {...msg}
+              currentUser={currentUser}
+              onSeek={(seekFn) => {
+                if (msg.type === "audio") {
+                  seekFunctions.current[i] = seekFn;
+                }
+              }}
+              text={
+                msg.type === "text"
+                  ? parseTextWithTimestamps(msg.text)
+                  : msg.text
               }
-            }}
-            text={msg.type === "text" ? parseTextWithTimestamps(msg.text) : msg.text}
-          />
-        ))}
+            />
+          ))
+        )}
         <div ref={bottomRef} />
       </div>
 
-      {/* INPUT */}
       <div className="chat-input">
-        <button
-          onClick={() => fileInputRef.current.click()}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "1.5rem",
-            marginRight: "10px",
-            color: "#8696a0",
-          }}
-        >
+        <button onClick={() => fileInputRef.current.click()} className="attach-btn">
           📎
         </button>
 
@@ -249,28 +251,23 @@ const sendMessage = async () => {
           style={{ display: "none" }}
           onChange={async (e) => {
             const file = e.target.files[0];
-            if (!file) return;
+            if (!file || !currentUser) return;
 
             const formData = new FormData();
             formData.append("audio", file);
+            formData.append("roomId", roomId);
 
             try {
-              const res = await fetch(
-                `${process.env.REACT_APP_API}/messages/upload`,
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                  },
-                  body: formData,
-                }
-              );
-
+              const res = await fetch(`${process.env.REACT_APP_API}/messages/upload`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+                body: formData,
+              });
               const data = await res.json();
 
-              socketRef.current.emit("send_message", {
+              socketRef.current.emit("sendMessage", {
                 roomId,
-                senderId: currentUser.id,
+                senderId: currentUser.id || currentUser._id,
                 sender: currentUser.name,
                 type: "audio",
                 audioUrl: data.url,
@@ -283,12 +280,10 @@ const sendMessage = async () => {
 
         <input
           placeholder="Type a message…"
-          style={{ flex: 1, fontSize: "1.1rem", padding: "10px" }}
+          className="main-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") sendMessage();
-          }}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         />
       </div>
     </div>
