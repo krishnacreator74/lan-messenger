@@ -1,2 +1,13 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+
+npm install express socket.io cors dotenv
+
+server/
+  node_modules/
+  package.json
+  package-lock.json
+
+server/
+  node_modules/
+  package.json
+  package-lock.json
+

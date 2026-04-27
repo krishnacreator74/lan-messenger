@@ -1,96 +1,79 @@
-💬 LAN Messenger
+# LAN Messenger
 
-A simple real-time messaging app that works over Local Area Network (LAN).
+A real-time messaging application designed for communication within a Local Area Network (LAN).
 
-Built for fast internal communication without internet dependency.
+## Overview
 
-🚀 Features (Currently Implemented)
-✅ Real-Time Messaging
+LAN Messenger allows users to create rooms, send messages, and communicate in real time using WebSockets. It works entirely within a LAN environment without requiring external internet services.
 
-WebSocket-based communication
+## Features
 
-Instant message updates
+* User authentication (Login / Signup)
+* Create and join chat rooms
+* Real-time messaging using Socket.IO
+* Persistent message storage (MongoDB)
+* Audio message support
+* Responsive UI
 
-Server-mediated chat system
+## Tech Stack
 
-✅ Chat Rooms
+### Frontend
 
-Multiple rooms supported
+* React.js
+* Socket.IO Client
+* CSS
 
-Switch between rooms using sidebar
+### Backend
 
-Active room highlighting
+* Node.js
+* Express.js
+* Socket.IO
+* MongoDB (Mongoose)
+* JWT Authentication
 
-Room-based message separation
+## Project Structure
 
-✅ Responsive UI
+```
+client/    # React frontend
+server/    # Node.js backend
+```
 
-Sidebar with room list
+## Setup
 
-Chat window with message display
+### Backend
 
-Toggle sidebar visibility
-
-Clean layout structure
-
-✅ Basic State Management
-
-Tracks active room
-
-Updates room messages dynamically
-
-Maintains chat state across components
-
-🏗 Project Structure
-lan-messenger/
-│
-├── client/
-│   ├── components/
-│   │   ├── Sidebar.jsx
-│   │   ├── ChatWindow.jsx
-│   │   └── MessageBubble.jsx
-│   └── pages/
-│       └── ChatPage.jsx
-│
-└── server/
-    └── WebSocket server
-⚙️ Tech Stack
-
-Frontend
-
-React
-
-WebSocket
-
-Functional components + hooks
-
-Backend
-
-Node.js
-
-WebSocket (Socket.io / ws)
-
-🧠 How It Works
-
-Client connects to LAN WebSocket server.
-
-User selects a room.
-
-Messages are sent to server.
-
-Server broadcasts message to clients in that room.
-
-UI updates instantly.
-
-▶️ Running the Project
-1️⃣ Clone the repository
-git clone https://github.com/krishnacreator74/lan-messenger
-cd lan-messenger
-2️⃣ Install dependencies
+```
+cd server
 npm install
-3️⃣ Start the server
-npm run server
-4️⃣ Start the client
-npm run client
+npm start
+```
 
-Make sure devices are connected to the same LAN network.
+### Frontend
+
+```
+cd client
+npm install
+npm start
+```
+
+## Environment Variables
+
+### Backend (.env)
+
+```
+PORT=5000
+JWT_SECRET=your_secret_key
+MONGO_URI=mongodb://127.0.0.1:27017/lan_messenger
+```
+
+### Frontend (.env)
+
+```
+REACT_APP_API=http://localhost:5000
+```
+
+## Notes
+
+* Designed for LAN usage
+* Backend must run before frontend
+* Uses WebSockets for real-time communication

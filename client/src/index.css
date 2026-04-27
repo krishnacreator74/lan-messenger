@@ -1,0 +1,23 @@
+/* =========================
+   RESET
+========================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* =========================
+   GLOBAL STYLES
+========================= */
+body {
+  background-color: #0b141a;
+  font-family: "Segoe UI", sans-serif;
+  color: #e9edef;
+
+  /* improves text rendering consistency */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
