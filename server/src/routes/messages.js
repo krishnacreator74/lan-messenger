@@ -1,9 +1,46 @@
 const express = require("express");
 const router = express.Router();
-
+const multer = require("multer");
+const path = require("path");
 const Message = require("../models/Message");
 const Room = require("../models/Room");
 const auth = require("../middleware/auth");
+
+// =========================
+// MULTER CONFIG (File Storage)
+// =========================
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // Ensure this folder exists in your root server directory
+  },
+  filename: (req, file, cb) => {
+    // Saves file as: 16738294.mp3
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
+
+// =========================
+// UPLOAD AUDIO ROUTE (The missing piece)
+// =========================
+router.post("/upload", auth, upload.single("audio"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ msg: "No file uploaded" });
+    }
+
+    // Construct the URL to the file
+    const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
+    // Note: We don't save to the DB here because your frontend sends 
+    // a separate socket message after the upload succeeds.
+    return res.json({ url: fileUrl });
+  } catch (err) {
+    console.error("Upload error:", err);
+    return res.status(500).json({ msg: "Server error during upload" });
+  }
+});
 
 // =========================
 // SEND MESSAGE

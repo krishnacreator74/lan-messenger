@@ -35,17 +35,15 @@ function MessageBubble({ type, text, audioUrl, sender, currentUser, onSeek, time
   useEffect(() => {
     if (type !== "audio" || !audioUrl || !waveformRef.current) return;
 
-    // Destroy existing instance if it exists before creating a new one
-    if (waveSurferInstance.current) {
-        waveSurferInstance.current.destroy();
-    }
+    // Flag to track if the component is still mounted
+    let isSubscribed = true;
 
     const ws = WaveSurfer.create({
       container: waveformRef.current,
-      waveColor: own ? "#93b5ae" : "#8696a0", // Subtle color difference for own audio
+      waveColor: own ? "#93b5ae" : "#8696a0",
       progressColor: "#25d366",
       cursorColor: "#ffffff",
-      height: 45, // Slimmer height fits chat better
+      height: 45,
       barWidth: 2,
       gap: 1,
       responsive: true,
@@ -54,26 +52,42 @@ function MessageBubble({ type, text, audioUrl, sender, currentUser, onSeek, time
 
     waveSurferInstance.current = ws;
 
-    ws.load(audioUrl).catch(err => console.error("WaveSurfer Error:", err));
+    // Standardized loading with a guard
+    const initWaveSurfer = async () => {
+      try {
+        await ws.load(audioUrl);
+        // Only update state if the component hasn't been destroyed yet
+        if (isSubscribed) {
+          setDuration(ws.getDuration());
+        }
+      } catch (err) {
+        // Silently catch the AbortError since it's expected during cleanup
+        if (err.name !== 'AbortError') {
+          console.error("WaveSurfer Load Error:", err);
+        }
+      }
+    };
 
-    ws.on("ready", () => setDuration(ws.getDuration()));
-    ws.on("audioprocess", () => setCurrentTime(ws.getCurrentTime()));
-    ws.on("seek", () => setCurrentTime(ws.getCurrentTime()));
-    ws.on("finish", () => setIsPlaying(false));
+    initWaveSurfer();
+
+    ws.on("audioprocess", () => isSubscribed && setCurrentTime(ws.getCurrentTime()));
+    ws.on("seek", () => isSubscribed && setCurrentTime(ws.getCurrentTime()));
+    ws.on("finish", () => isSubscribed && setIsPlaying(false));
 
     if (onSeek) onSeek(seekTo);
 
     return () => {
+      isSubscribed = false; // Mark as unmounted
       ws.destroy();
       waveSurferInstance.current = null;
     };
-  }, [audioUrl, type, own]); // Re-run if audioUrl changes
+  }, [audioUrl, type, own]);
 
   const togglePlay = () => {
     if (!waveSurferInstance.current) return;
     waveSurferInstance.current.playPause();
     setIsPlaying(waveSurferInstance.current.isPlaying());
-  };
+  };  
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);

@@ -36,24 +36,33 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
     const handleReceiveMessage = (msg) => {
       if (!msg.roomId) return;
       
+      // 1. Standardize the format to match your fetch format
       const formatted = {
+        ...msg,
         type: msg.type || "text",
-        text: msg.text,
-        audioUrl: msg.audioUrl,
         sender: {
-          id: String(msg.senderId),
-          name: msg.sender,
+          // Use the senderId from the backend socket payload
+          id: String(msg.senderId || msg.sender?.id || ""), 
+          name: msg.senderName || msg.sender || "Unknown",
         },
         timestamp: msg.timestamp || Date.now(),
       };
 
-      setRooms((prev) => ({
-        ...prev,
-        [msg.roomId]: {
-          ...(prev[msg.roomId] || {}),
-          messages: [...(prev[msg.roomId]?.messages || []), formatted],
-        },
-      }));
+      setRooms((prev) => {
+        const roomData = prev[msg.roomId] || { messages: [] };
+        
+        // 2. Prevent duplicate messages if the message has an _id from DB
+        const isDuplicate = roomData.messages.some(m => m._id === msg._id && msg._id !== undefined);
+        if (isDuplicate) return prev;
+
+        return {
+          ...prev,
+          [msg.roomId]: {
+            ...roomData,
+            messages: [...roomData.messages, formatted],
+          },
+        };
+      });
     };
 
     socketRef.current.on("receiveMessage", handleReceiveMessage);
@@ -139,6 +148,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
         sender: currentUser.name,
         text: savedMsg.text,
         type: "text",
+        _id: savedMsg._id,
       });
 
       setInput("");

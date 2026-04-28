@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const Room = require("../models/Room");
-// const Message = require("../models/Message");
+const Message = require("../models/Message");
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
@@ -51,33 +51,37 @@ module.exports = (io) => {
     // SEND MESSAGE
     // =========================
     socket.on("sendMessage", async (data) => {
-      try {
-        const { roomId, text } = data;
+          try {
+            // 2. Destructure EVERYTHING including type and audioUrl
+            const { roomId, text, type, audioUrl } = data;
 
-        const room = await Room.findById(roomId);
+            const room = await Room.findById(roomId);
+            if (!room || !room.members.includes(socket.user.id)) {
+              return socket.emit("error", "Not allowed");
+            }
 
-        if (!room || !room.members.includes(socket.user.id)) {
-          return socket.emit("error", "Not allowed");
-        }
+            // 3. Prepare the full message object
+            const messageData = {
+              roomId,
+              text: text || "",
+              type: type || "text",
+              audioUrl: audioUrl || "",
+              sender: socket.user.name,
+              senderId: socket.user.id,
+              timestamp: new Date(),
+            };
 
-        const message = {
-          roomId,
-          text,
-          sender: socket.user.name,
-          senderId: socket.user.id,
-          timestamp: new Date(),
-        };
+            // 4. SAVE TO DATABASE (Crucial so it doesn't disappear on refresh)
+            const savedMessage = await Message.create(messageData);
 
-        // Optional DB save
-        /*
-        await Message.create(message);
-        */
+            // 5. EMIT THE SAVED MESSAGE (use savedMessage to get the DB _id)
+            io.to(roomId).emit("receiveMessage", savedMessage);
 
-        io.to(roomId).emit("receiveMessage", message);
-      } catch (err) {
-        console.error("Send message error:", err);
-      }
-    });
+            console.log(`Message sent in ${roomId}: ${type}`);
+          } catch (err) {
+            console.error("Send message error:", err);
+          }
+        });
 
     // =========================
     // DISCONNECT
