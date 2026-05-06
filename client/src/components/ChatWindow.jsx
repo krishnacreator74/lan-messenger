@@ -78,17 +78,16 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
         });
         const data = await res.json();
 
-        const formatted = data.map((msg) => ({
-          type: msg.type || "text",
-          text: msg.text,
-          audioUrl: msg.audioUrl,
-          sender: {
-            id: String(msg.senderId || msg.sender?._id || ""),
-            name: msg.senderName || msg.sender || "Unknown",
-          },
-          timestamp: msg.timestamp,
-        }));
-
+      const formatted = data.map((msg) => ({
+        type: msg.type || "text",
+        text: msg.text,
+        audioUrl: msg.audioUrl,
+        sender: {
+          id: String(msg.senderId || "").trim(),  // ✅ now this will actually exist
+          name: msg.sender || "Unknown",
+        },
+        timestamp: msg.timestamp,
+      }));
 
         setRooms((prev) => ({
           ...prev,
@@ -140,6 +139,25 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
         text: savedMsg.text,
         type: "text",
       });
+
+      // ✅ ADD THIS: optimistically append to local state
+      const newMsg = {
+        type: "text",
+        text: savedMsg.text,
+        sender: {
+          id: String(currentUser.id || currentUser._id),
+          name: currentUser.name,
+        },
+        timestamp: savedMsg.timestamp || Date.now(),
+      };
+
+      setRooms((prev) => ({
+        ...prev,
+        [roomId]: {
+          ...prev[roomId],
+          messages: [...(prev[roomId]?.messages || []), newMsg],
+        },
+      }));
 
       setInput("");
     } catch (err) {

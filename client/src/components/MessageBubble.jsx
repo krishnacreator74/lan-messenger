@@ -18,6 +18,7 @@ function MessageBubble({ type, text, audioUrl, sender, currentUser, onSeek, time
   
   // Comparison needs to be robust: handle nulls and string vs number
   const own = senderId !== "" && currentUserId !== "" && senderId === currentUserId;
+  console.log("senderId:", senderId, "currentUserId:", currentUserId, "own:", own);
   // =========================
   // SEEK FUNCTION
   // =========================
