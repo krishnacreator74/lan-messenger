@@ -74,8 +74,8 @@ module.exports = (io) => {
             // 4. SAVE TO DATABASE (Crucial so it doesn't disappear on refresh)
             const savedMessage = await Message.create(messageData);
 
-            // 5. EMIT THE SAVED MESSAGE (use savedMessage to get the DB _id)
-            io.to(roomId).emit("receiveMessage", savedMessage);
+
+            socket.to(roomId).emit("receiveMessage", savedMessage);
 
             console.log(`Message sent in ${roomId}: ${type}`);
           } catch (err) {

@@ -79,6 +79,8 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
   useEffect(() => {
     if (!roomId) return;
 
+    socketRef.current?.emit("joinRoom", roomId);
+
     const fetchMessages = async () => {
       try {
         const token = localStorage.getItem("token");
