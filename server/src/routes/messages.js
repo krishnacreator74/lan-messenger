@@ -32,10 +32,20 @@ router.post("/upload", auth, upload.single("audio"), async (req, res) => {
 
     // Construct the URL to the file
     const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    const { roomId } = req.body; // <-- ADD THIS LINE
 
     // Note: We don't save to the DB here because your frontend sends 
     // a separate socket message after the upload succeeds.
-    return res.json({ url: fileUrl });
+    const message = await Message.create({
+      roomId,
+      type: "audio",
+      audioUrl: fileUrl,
+      text: "",
+      sender: req.user.name,
+      senderId: req.user.id,
+      timestamp: new Date(),
+    });
+    res.json({ url: fileUrl, _id: message._id });
   } catch (err) {
     console.error("Upload error:", err);
     return res.status(500).json({ msg: "Server error during upload" });

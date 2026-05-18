@@ -111,7 +111,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-
+        console.log("All messages:", data.map(m => ({ type: m.type, audioUrl: m.audioUrl, _id: m._id })));
         console.log("RAW MSG:", data[0])
         const formatted = data.map((msg) => ({
           type: msg.type || "text",
@@ -325,13 +325,38 @@ return (
                 body: formData,
               });
               const data = await res.json();
+              
+              const tempId = data._id || `temp-${Date.now()}`;
 
+              // Show audio immediately for sender
+              setRooms((prev) => {
+                const roomData = prev[roomId] || { messages: [] };
+                return {
+                  ...prev,
+                  [roomId]: {
+                    ...roomData,
+                    messages: [...roomData.messages, {
+                      _id: tempId,
+                      type: "audio",
+                      audioUrl: data.url,
+                      sender: {
+                        id: String(currentUser.id || currentUser._id),
+                        name: currentUser.name,
+                      },
+                      timestamp: Date.now(),
+                    }],
+                  },
+                };
+              });
+
+              // Broadcast to others
               socketRef.current.emit("sendMessage", {
                 roomId,
                 senderId: currentUser.id || currentUser._id,
                 sender: currentUser.name,
                 type: "audio",
                 audioUrl: data.url,
+                _id: tempId,
               });
             } catch (err) {
               console.error("Upload failed:", err);
