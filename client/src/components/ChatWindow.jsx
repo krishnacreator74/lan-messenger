@@ -35,6 +35,9 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
 
     const handleReceiveMessage = (msg) => {
       if (!msg.roomId) return;
+        const myId = String(currentUser?.id || currentUser?._id || "");
+        if (myId && String(msg.senderId) === myId) return;
+
       
       // 1. Standardize the format to match your fetch format
       const formatted = {
@@ -87,14 +90,16 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
         });
         const data = await res.json();
 
+        console.log("RAW MSG:", data[0])
         const formatted = data.map((msg) => ({
           type: msg.type || "text",
           text: msg.text,
           audioUrl: msg.audioUrl,
+          _id: msg._id,
           sender: {
-            id: String(msg.senderId || msg.sender?._id || ""),
-            name: msg.senderName || msg.sender || "Unknown",
-          },
+            id: String(msg.senderId?._id || msg.senderId || msg.sender?._id || msg.sender || ""),
+            name: msg.senderName || msg.senderId?.name || msg.sender?.name || msg.sender || "Unknown",
+},
           timestamp: msg.timestamp,
         }));
 
@@ -142,6 +147,28 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
 
       const savedMsg = await res.json();
 
+      const outgoing = {
+        _id: savedMsg._id,
+        type: "text",
+        text: savedMsg.text,
+        sender: {
+          id: String(currentUser.id || currentUser._id),
+          name: currentUser.name,
+        },
+        timestamp: savedMsg.timestamp || Date.now(),
+      };
+
+      setRooms((prev) => {
+        const roomData = prev[roomId] || { messages: [] };
+        return {
+          ...prev,
+          [roomId]: {
+            ...roomData,
+            messages: [...roomData.messages, outgoing],
+          },
+        };
+      });
+
       socketRef.current.emit("sendMessage", {
         roomId,
         senderId: currentUser.id || currentUser._id,
@@ -152,6 +179,8 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
       });
 
       setInput("");
+
+
     } catch (err) {
       console.error("Send message error:", err);
     }

@@ -13,11 +13,16 @@ function MessageBubble({ type, text, audioUrl, sender, currentUser, onSeek, time
   // USER RESOLUTION (The Fix)
   // =========================
   // Use .toString() and optional chaining to prevent crashes
-  const senderId = String(sender?.id || sender?._id || "").trim();
-  const currentUserId = String(currentUser?.id || currentUser?._id || "").trim();
-  
-  // Comparison needs to be robust: handle nulls and string vs number
-  const own = senderId !== "" && currentUserId !== "" && senderId === currentUserId;
+const senderId = String(sender?.id || sender?._id || "").trim();
+const currentUserId = String(currentUser?.id || currentUser?._id || "").trim();
+const currentUserName = String(currentUser?.name || "").trim();
+
+const own =
+  senderId !== "" &&
+  (
+    senderId === currentUserId ||
+    senderId === currentUserName
+  );
   // =========================
   // SEEK FUNCTION
   // =========================
