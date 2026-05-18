@@ -42,6 +42,7 @@ module.exports = (io) => {
 
         socket.join(roomId);
         console.log(`${socket.user.name} joined room ${roomId}`);
+        console.log("Rooms this socket is in:", Array.from(socket.rooms));
       } catch (err) {
         console.error("Join room error:", err);
       }
@@ -76,6 +77,7 @@ module.exports = (io) => {
 
 
             socket.to(roomId).emit("receiveMessage", savedMessage);
+            console.log(`Emitted to room ${roomId}, sender excluded. Socket rooms:`, Array.from(socket.rooms));
 
             console.log(`Message sent in ${roomId}: ${type}`);
           } catch (err) {

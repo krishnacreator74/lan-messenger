@@ -29,18 +29,38 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
   // SOCKET CONNECTION
   // =========================
   useEffect(() => {
-    if (!currentUser) return; // Wait until user is loaded
+    if (!currentUser) return;
 
-    socketRef.current = io(process.env.REACT_APP_API, {
+    const socket = io(process.env.REACT_APP_API, {
       auth: { token: localStorage.getItem("token") },
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+
+      // Auto join room after connection/reconnection
+      if (roomId) {
+        socket.emit("joinRoom", roomId);
+        console.log("Joined room on connect:", roomId);
+      }
     });
 
     const handleReceiveMessage = (msg) => {
       if (!msg.roomId) return;
+
       const myId = String(currentUser?.id || currentUser?._id || "");
       const myName = String(currentUser?.name || "");
       const msgSenderId = String(msg.senderId || "");
-      if ((myId && msgSenderId === myId) || (myName && msgSenderId === myName)) return;
+
+      // Ignore own echoed messages
+      if (
+        (myId && msgSenderId === myId) ||
+        (myName && msgSenderId === myName)
+      ) {
+        return;
+      }
 
       const formatted = {
         ...msg,
@@ -54,8 +74,13 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
 
       setRooms((prev) => {
         const roomData = prev[msg.roomId] || { messages: [] };
-        const isDuplicate = roomData.messages.some(m => m._id && m._id === msg._id);
+
+        const isDuplicate = roomData.messages.some(
+          (m) => m._id && m._id === msg._id
+        );
+
         if (isDuplicate) return prev;
+
         return {
           ...prev,
           [msg.roomId]: {
@@ -66,20 +91,18 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
       });
     };
 
-    socketRef.current.on("receiveMessage", handleReceiveMessage);
+    socket.on("receiveMessage", handleReceiveMessage);
 
     return () => {
-      socketRef.current.off("receiveMessage");
-      socketRef.current.disconnect();
+      socket.off("receiveMessage");
+      socket.disconnect();
     };
-  }, [currentUser, setRooms]); // <-- currentUser in deps now
+  }, [currentUser, setRooms]); // roomId intentionally excluded
   // =========================
   // JOIN ROOM & FETCH OLD MESSAGES
   // =========================
   useEffect(() => {
     if (!roomId) return;
-
-    socketRef.current?.emit("joinRoom", roomId);
 
     const fetchMessages = async () => {
       try {
