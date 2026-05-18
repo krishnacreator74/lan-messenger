@@ -29,23 +29,24 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
   // SOCKET CONNECTION
   // =========================
   useEffect(() => {
+    if (!currentUser) return; // Wait until user is loaded
+
     socketRef.current = io(process.env.REACT_APP_API, {
       auth: { token: localStorage.getItem("token") },
     });
 
     const handleReceiveMessage = (msg) => {
       if (!msg.roomId) return;
-        const myId = String(currentUser?.id || currentUser?._id || "");
-        if (myId && String(msg.senderId) === myId) return;
+      const myId = String(currentUser?.id || currentUser?._id || "");
+      const myName = String(currentUser?.name || "");
+      const msgSenderId = String(msg.senderId || "");
+      if ((myId && msgSenderId === myId) || (myName && msgSenderId === myName)) return;
 
-      
-      // 1. Standardize the format to match your fetch format
       const formatted = {
         ...msg,
         type: msg.type || "text",
         sender: {
-          // Use the senderId from the backend socket payload
-          id: String(msg.senderId || msg.sender?.id || ""), 
+          id: String(msg.senderId || msg.sender?.id || ""),
           name: msg.senderName || msg.sender || "Unknown",
         },
         timestamp: msg.timestamp || Date.now(),
@@ -53,11 +54,8 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
 
       setRooms((prev) => {
         const roomData = prev[msg.roomId] || { messages: [] };
-        
-        // 2. Prevent duplicate messages if the message has an _id from DB
-        const isDuplicate = roomData.messages.some(m => m._id === msg._id && msg._id !== undefined);
+        const isDuplicate = roomData.messages.some(m => m._id && m._id === msg._id);
         if (isDuplicate) return prev;
-
         return {
           ...prev,
           [msg.roomId]: {
@@ -74,8 +72,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
       socketRef.current.off("receiveMessage");
       socketRef.current.disconnect();
     };
-  }, [setRooms]);
-
+  }, [currentUser, setRooms]); // <-- currentUser in deps now
   // =========================
   // JOIN ROOM & FETCH OLD MESSAGES
   // =========================
@@ -250,7 +247,7 @@ function ChatWindow({ room, setRooms, roomId, toggleSidebar }) {
     );
   }
 return (
-    <div className="chat" key={roomId}> {/* key={roomId} forces refresh on change */}
+    <div key={roomId} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
       <div className="messages" style={{ overflowY: "auto", height: "80vh" }}>
         {/* 3. Improved Loading check */}
         {!room?.messages ? (
