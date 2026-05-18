@@ -52,38 +52,32 @@ module.exports = (io) => {
     // SEND MESSAGE
     // =========================
     socket.on("sendMessage", async (data) => {
-          try {
-            // 2. Destructure EVERYTHING including type and audioUrl
-            const { roomId, text, type, audioUrl } = data;
+      try {
+        const { roomId, text, type, audioUrl, _id } = data;
 
-            const room = await Room.findById(roomId);
-            if (!room || !room.members.includes(socket.user.id)) {
-              return socket.emit("error", "Not allowed");
-            }
+        const room = await Room.findById(roomId);
+        if (!room || !room.members.includes(socket.user.id)) {
+          return socket.emit("error", "Not allowed");
+        }
 
-            // 3. Prepare the full message object
-            const messageData = {
-              roomId,
-              text: text || "",
-              type: type || "text",
-              audioUrl: audioUrl || "",
-              sender: socket.user.name,
-              senderId: socket.user.id,
-              timestamp: new Date(),
-            };
+        // Just broadcast — client already saved to DB via REST
+        const payload = {
+          _id,
+          roomId,
+          text: text || "",
+          type: type || "text",
+          audioUrl: audioUrl || "",
+          sender: socket.user.name,
+          senderId: socket.user.id,
+          timestamp: new Date(),
+        };
 
-            // 4. SAVE TO DATABASE (Crucial so it doesn't disappear on refresh)
-            const savedMessage = await Message.create(messageData);
-
-
-            socket.to(roomId).emit("receiveMessage", savedMessage);
-            console.log(`Emitted to room ${roomId}, sender excluded. Socket rooms:`, Array.from(socket.rooms));
-
-            console.log(`Message sent in ${roomId}: ${type}`);
-          } catch (err) {
-            console.error("Send message error:", err);
-          }
-        });
+        socket.to(roomId).emit("receiveMessage", payload);
+        console.log(`Message broadcast in ${roomId}: ${type}`);
+      } catch (err) {
+        console.error("Send message error:", err);
+      }
+    });
 
     // =========================
     // DISCONNECT
